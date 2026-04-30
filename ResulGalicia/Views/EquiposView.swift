@@ -4,12 +4,17 @@ struct EquiposView: View {
     @EnvironmentObject var service: SupabaseService
     @State private var equipos: [Equipo] = []
     @State private var cargando = true
+    @State private var errorMsg: String? = nil
 
     var body: some View {
         NavigationStack {
             Group {
                 if cargando {
                     ProgressView()
+                } else if let msg = errorMsg {
+                    ErrorStateView(mensaje: msg) {
+                        Task { await cargar() }
+                    }
                 } else {
                     List(equipos) { equipo in
                         NavigationLink(destination: EquipoDetalleView(equipo: equipo)) {
@@ -31,6 +36,7 @@ struct EquiposView: View {
                         }
                     }
                     .listStyle(.plain)
+                    .refreshable { await cargar() }
                 }
             }
             .navigationTitle("Equipos")
@@ -39,6 +45,7 @@ struct EquiposView: View {
     }
 
     func cargar() async {
+        await MainActor.run { errorMsg = nil }
         do {
             let es = try await service.fetchEquipos()
             await MainActor.run {
@@ -46,8 +53,10 @@ struct EquiposView: View {
                 self.cargando = false
             }
         } catch {
-            print("Error: \(error)")
-            await MainActor.run { cargando = false }
+            await MainActor.run {
+                self.errorMsg = "No se pudieron cargar los equipos"
+                self.cargando = false
+            }
         }
     }
 }
@@ -59,6 +68,7 @@ struct EquipoDetalleView: View {
     @State private var partidos: [Partido] = []
     @State private var equipos: [UUID: Equipo] = [:]
     @State private var cargando = true
+    @State private var errorMsg: String? = nil
 
     var victorias: Int { partidos.filter {
         ($0.equipoLocalId == equipo.id && $0.golesLocal > $0.golesVisitante) ||
@@ -82,8 +92,6 @@ struct EquipoDetalleView: View {
     var body: some View {
         ScrollView {
             VStack(spacing: 16) {
-
-                // Cabecera equipo
                 VStack(spacing: 8) {
                     Circle()
                         .fill(Color.blue.opacity(0.15))
@@ -106,8 +114,11 @@ struct EquipoDetalleView: View {
 
                 if cargando {
                     ProgressView()
+                } else if let msg = errorMsg {
+                    ErrorStateView(mensaje: msg) {
+                        Task { await cargar() }
+                    }
                 } else {
-                    // Stats
                     VStack(alignment: .leading, spacing: 10) {
                         Text("Temporada")
                             .font(.headline)
@@ -136,7 +147,6 @@ struct EquipoDetalleView: View {
                     .background(Color(.systemGray6))
                     .cornerRadius(12)
 
-                    // Plantilla
                     VStack(alignment: .leading, spacing: 10) {
                         Text("Plantilla (\(jugadores.count))")
                             .font(.headline)
@@ -171,7 +181,6 @@ struct EquipoDetalleView: View {
                     .background(Color(.systemGray6))
                     .cornerRadius(12)
 
-                    // Últimos partidos
                     VStack(alignment: .leading, spacing: 10) {
                         Text("Partidos")
                             .font(.headline)
@@ -224,6 +233,7 @@ struct EquipoDetalleView: View {
     }
 
     func cargar() async {
+        await MainActor.run { errorMsg = nil }
         do {
             async let j = service.fetchJugadores(equipoId: equipo.id)
             async let p = service.fetchPartidosPorEquipo(equipoId: equipo.id)
@@ -244,8 +254,10 @@ struct EquipoDetalleView: View {
                 self.cargando = false
             }
         } catch {
-            print("Error: \(error)")
-            await MainActor.run { cargando = false }
+            await MainActor.run {
+                self.errorMsg = "No se pudo cargar el equipo"
+                self.cargando = false
+            }
         }
     }
 }

@@ -1,11 +1,3 @@
-//
-//  JugadorDetalleView.swift
-//  ResulGalicia
-//
-//  Created by alvaro on 30/04/2026.
-//
-
-
 import SwiftUI
 
 struct JugadorDetalleView: View {
@@ -15,6 +7,7 @@ struct JugadorDetalleView: View {
     @State private var goles: [Gol] = []
     @State private var tarjetas: [Tarjeta] = []
     @State private var cargando = true
+    @State private var errorMsg: String? = nil
 
     var minutosJugados: Int { alineaciones.reduce(0) { $0 + $1.minutosJugados } }
     var minutosPosibles: Int { alineaciones.count * 90 }
@@ -26,7 +19,6 @@ struct JugadorDetalleView: View {
     var body: some View {
         ScrollView {
             VStack(spacing: 16) {
-                // Cabecera
                 VStack(spacing: 4) {
                     Text(jugador.nombre)
                         .font(.title2)
@@ -40,8 +32,11 @@ struct JugadorDetalleView: View {
 
                 if cargando {
                     ProgressView()
+                } else if let msg = errorMsg {
+                    ErrorStateView(mensaje: msg) {
+                        Task { await cargar() }
+                    }
                 } else {
-                    // Stats generales
                     LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible()), GridItem(.flexible())], spacing: 12) {
                         StatBox(valor: "\(partidos)", etiqueta: "Partidos")
                         StatBox(valor: "\(totalGoles)", etiqueta: "Goles")
@@ -51,7 +46,6 @@ struct JugadorDetalleView: View {
                         StatBox(valor: "\(rojas)🟥", etiqueta: "Rojas")
                     }
 
-                    // Goles detalle
                     if !goles.isEmpty {
                         VStack(alignment: .leading, spacing: 8) {
                             Text("Goles")
@@ -73,7 +67,6 @@ struct JugadorDetalleView: View {
                         .cornerRadius(12)
                     }
 
-                    // Tarjetas detalle
                     if !tarjetas.isEmpty {
                         VStack(alignment: .leading, spacing: 8) {
                             Text("Tarjetas")
@@ -104,6 +97,7 @@ struct JugadorDetalleView: View {
     }
 
     func cargar() async {
+        await MainActor.run { errorMsg = nil }
         do {
             async let a = service.fetchAlineacionesJugador(jugadorId: jugador.id)
             async let g = service.fetchGolesJugador(jugadorId: jugador.id)
@@ -116,8 +110,10 @@ struct JugadorDetalleView: View {
                 self.cargando = false
             }
         } catch {
-            print("Error: \(error)")
-            await MainActor.run { cargando = false }
+            await MainActor.run {
+                self.errorMsg = "No se pudo cargar el jugador"
+                self.cargando = false
+            }
         }
     }
 }

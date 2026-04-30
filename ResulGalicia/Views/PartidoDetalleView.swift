@@ -1,17 +1,9 @@
-//
-//  PartidoDetalleView.swift
-//  ResulGalicia
-//
-//  Created by alvaro on 30/04/2026.
-//
-
-
 import SwiftUI
 
 struct PartidoDetalleView: View {
     let partido: Partido
     let equipos: [UUID: Equipo]
-    
+
     @EnvironmentObject var service: SupabaseService
     @State private var goles: [Gol] = []
     @State private var tarjetas: [Tarjeta] = []
@@ -19,6 +11,7 @@ struct PartidoDetalleView: View {
     @State private var alineaciones: [Alineacion] = []
     @State private var jugadores: [UUID: Jugador] = [:]
     @State private var cargando = true
+    @State private var errorMsg: String? = nil
 
     var equipoLocal: Equipo? { equipos[partido.equipoLocalId] }
     var equipoVisitante: Equipo? { equipos[partido.equipoVisitanteId] }
@@ -26,28 +19,18 @@ struct PartidoDetalleView: View {
     var body: some View {
         ScrollView {
             VStack(spacing: 16) {
-                // Marcador
                 marcadorView
 
                 if cargando {
-                    ProgressView()
+                    ProgressView().padding()
+                } else if let msg = errorMsg {
+                    ErrorStateView(mensaje: msg) {
+                        Task { await cargar() }
+                    }
                 } else {
-                    // Goles
-                    if !goles.isEmpty {
-                        seccionGoles
-                    }
-                    
-                    // Tarjetas
-                    if !tarjetas.isEmpty {
-                        seccionTarjetas
-                    }
-                    
-                    // Sustituciones
-                    if !sustituciones.isEmpty {
-                        seccionSustituciones
-                    }
-                    
-                    // Alineaciones
+                    if !goles.isEmpty { seccionGoles }
+                    if !tarjetas.isEmpty { seccionTarjetas }
+                    if !sustituciones.isEmpty { seccionSustituciones }
                     seccionAlineaciones
                 }
             }
@@ -83,6 +66,11 @@ struct PartidoDetalleView: View {
                     .font(.caption)
                     .foregroundColor(.secondary)
             }
+            if let arbitro = partido.arbitro {
+                Text("Árb: \(arbitro)")
+                    .font(.caption2)
+                    .foregroundColor(.secondary)
+            }
         }
         .padding()
         .background(Color(.systemGray6))
@@ -96,7 +84,7 @@ struct PartidoDetalleView: View {
             ForEach(goles) { gol in
                 HStack {
                     if gol.equipoId == partido.equipoLocalId {
-                        Text(jugadores[gol.jugadorId]?.nombre ?? "")
+                        jugadorLink(id: gol.jugadorId)
                         Spacer()
                         Text("\(gol.minuto ?? 0)'")
                             .foregroundColor(.secondary)
@@ -106,7 +94,7 @@ struct PartidoDetalleView: View {
                         Text("\(gol.minuto ?? 0)'")
                             .foregroundColor(.secondary)
                         Spacer()
-                        Text(jugadores[gol.jugadorId]?.nombre ?? "")
+                        jugadorLink(id: gol.jugadorId)
                     }
                 }
                 .font(.subheadline)
@@ -124,7 +112,7 @@ struct PartidoDetalleView: View {
             ForEach(tarjetas) { tarjeta in
                 HStack {
                     Text(tarjeta.tipo == "amarilla" ? "🟨" : "🟥")
-                    Text(jugadores[tarjeta.jugadorId]?.nombre ?? "")
+                    jugadorLink(id: tarjeta.jugadorId)
                     Spacer()
                     Text("\(tarjeta.minuto ?? 0)'")
                         .foregroundColor(.secondary)
@@ -144,10 +132,14 @@ struct PartidoDetalleView: View {
             ForEach(sustituciones) { s in
                 HStack {
                     VStack(alignment: .leading) {
-                        Text("▲ \(jugadores[s.jugadorEntraId]?.nombre ?? "")")
-                            .foregroundColor(.green)
-                        Text("▼ \(jugadores[s.jugadorSaleId]?.nombre ?? "")")
-                            .foregroundColor(.red)
+                        HStack(spacing: 4) {
+                            Text("▲").foregroundColor(.green)
+                            jugadorLink(id: s.jugadorEntraId).foregroundColor(.green)
+                        }
+                        HStack(spacing: 4) {
+                            Text("▼").foregroundColor(.red)
+                            jugadorLink(id: s.jugadorSaleId).foregroundColor(.red)
+                        }
                     }
                     Spacer()
                     Text("\(s.minuto ?? 0)'")
@@ -185,35 +177,51 @@ struct PartidoDetalleView: View {
                 .fontWeight(.bold)
             Text("Titulares").font(.caption2).foregroundColor(.secondary)
             ForEach(titulares) { a in
-                Text(jugadores[a.jugadorId]?.nombre ?? "")
-                    .font(.caption)
+                jugadorLink(id: a.jugadorId).font(.caption)
             }
             if !suplentes.isEmpty {
                 Text("Suplentes").font(.caption2).foregroundColor(.secondary).padding(.top, 4)
                 ForEach(suplentes) { a in
-                    Text(jugadores[a.jugadorId]?.nombre ?? "")
-                        .font(.caption)
+                    jugadorLink(id: a.jugadorId).font(.caption)
                 }
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
+    @ViewBuilder
+    func jugadorLink(id: UUID) -> some View {
+        if let jugador = jugadores[id] {
+            NavigationLink(destination: JugadorDetalleView(jugador: jugador)) {
+                Text(jugador.nombre)
+            }
+        } else {
+            Text("...")
+        }
+    }
+
     func cargar() async {
+        await MainActor.run { errorMsg = nil }
         do {
             async let g = service.fetchGoles(partidoId: partido.id)
             async let t = service.fetchTarjetas(partidoId: partido.id)
             async let s = service.fetchSustituciones(partidoId: partido.id)
             async let a = service.fetchAlineaciones(partidoId: partido.id)
-            
+
             let (gs, ts, ss, as_) = try await (g, t, s, a)
-            
+
             var jugs: [UUID: Jugador] = [:]
-            let ids = Set(gs.map { $0.jugadorId } + ts.map { $0.jugadorId } + ss.map { $0.jugadorSaleId } + ss.map { $0.jugadorEntraId } + as_.map { $0.jugadorId })
+            let ids = Set(
+                gs.map { $0.jugadorId } +
+                ts.map { $0.jugadorId } +
+                ss.map { $0.jugadorSaleId } +
+                ss.map { $0.jugadorEntraId } +
+                as_.map { $0.jugadorId }
+            )
             for id in ids {
                 jugs[id] = try await service.fetchJugador(id: id)
             }
-            
+
             await MainActor.run {
                 self.goles = gs
                 self.tarjetas = ts
@@ -223,8 +231,10 @@ struct PartidoDetalleView: View {
                 self.cargando = false
             }
         } catch {
-            print("Error: \(error)")
-            await MainActor.run { cargando = false }
+            await MainActor.run {
+                self.errorMsg = "No se pudo cargar el partido"
+                self.cargando = false
+            }
         }
     }
 }

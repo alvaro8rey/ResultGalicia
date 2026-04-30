@@ -18,15 +18,13 @@ struct PartidoDetalleView: View {
 
     var body: some View {
         ScrollView {
-            VStack(spacing: 16) {
+            VStack(spacing: 14) {
                 marcadorView
 
                 if cargando {
-                    ProgressView().padding()
+                    ProgressView().padding(.top, 32)
                 } else if let msg = errorMsg {
-                    ErrorStateView(mensaje: msg) {
-                        Task { await cargar() }
-                    }
+                    ErrorStateView(mensaje: msg) { Task { await cargar() } }
                 } else {
                     if !goles.isEmpty { seccionGoles }
                     if !tarjetas.isEmpty { seccionTarjetas }
@@ -34,155 +32,189 @@ struct PartidoDetalleView: View {
                     seccionAlineaciones
                 }
             }
-            .padding()
+            .padding(.horizontal, 16)
+            .padding(.bottom, 24)
         }
+        .background(Color(.systemGroupedBackground))
         .navigationTitle("Partido")
         .navigationBarTitleDisplayMode(.inline)
         .task { await cargar() }
     }
 
+    // MARK: - Marcador
+
     var marcadorView: some View {
-        VStack(spacing: 8) {
-            HStack {
-                Text(equipoLocal?.nombre ?? "")
-                    .font(.headline)
-                    .multilineTextAlignment(.center)
-                    .frame(maxWidth: .infinity)
-                Text("\(partido.golesLocal) - \(partido.golesVisitante)")
-                    .font(.system(size: 32, weight: .bold))
-                    .padding(.horizontal)
-                Text(equipoVisitante?.nombre ?? "")
-                    .font(.headline)
-                    .multilineTextAlignment(.center)
-                    .frame(maxWidth: .infinity)
+        ZStack {
+            LinearGradient(
+                colors: [Color.blue.opacity(0.75), Color.blue.opacity(0.45)],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+            .cornerRadius(16)
+
+            VStack(spacing: 14) {
+                HStack(spacing: 8) {
+                    Text(equipoLocal?.nombre ?? "—")
+                        .font(.headline)
+                        .fontWeight(.bold)
+                        .foregroundColor(.white)
+                        .multilineTextAlignment(.center)
+                        .frame(maxWidth: .infinity)
+
+                    Text("\(partido.golesLocal) – \(partido.golesVisitante)")
+                        .font(.system(size: 38, weight: .black, design: .rounded))
+                        .foregroundColor(.white)
+                        .monospacedDigit()
+                        .padding(.horizontal, 14)
+
+                    Text(equipoVisitante?.nombre ?? "—")
+                        .font(.headline)
+                        .fontWeight(.bold)
+                        .foregroundColor(.white)
+                        .multilineTextAlignment(.center)
+                        .frame(maxWidth: .infinity)
+                }
+
+                HStack(spacing: 16) {
+                    if let fecha = partido.fecha {
+                        Label(fecha, systemImage: "calendar")
+                    }
+                    if let estadio = partido.estadio {
+                        Label(estadio, systemImage: "mappin")
+                    }
+                }
+                .font(.caption)
+                .foregroundColor(.white.opacity(0.85))
+
+                if let arbitro = partido.arbitro {
+                    Text("Árbitro: \(arbitro)")
+                        .font(.caption2)
+                        .foregroundColor(.white.opacity(0.7))
+                }
             }
-            if let fecha = partido.fecha {
-                Text(fecha)
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-            }
-            if let estadio = partido.estadio {
-                Text(estadio)
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-            }
-            if let arbitro = partido.arbitro {
-                Text("Árb: \(arbitro)")
-                    .font(.caption2)
-                    .foregroundColor(.secondary)
-            }
+            .padding(20)
         }
-        .padding()
-        .background(Color(.systemGray6))
-        .cornerRadius(12)
+        .padding(.top, 8)
     }
+
+    // MARK: - Goles
 
     var seccionGoles: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text("Goles")
-                .font(.headline)
-            ForEach(goles) { gol in
-                HStack {
-                    if gol.equipoId == partido.equipoLocalId {
-                        jugadorLink(id: gol.jugadorId)
-                        Spacer()
-                        Text("\(gol.minuto ?? 0)'")
-                            .foregroundColor(.secondary)
-                        Text("⚽")
-                    } else {
-                        Text("⚽")
-                        Text("\(gol.minuto ?? 0)'")
-                            .foregroundColor(.secondary)
-                        Spacer()
-                        jugadorLink(id: gol.jugadorId)
+        InfoCard(titulo: "⚽ Goles") {
+            VStack(spacing: 10) {
+                ForEach(goles) { gol in
+                    HStack {
+                        if gol.equipoId == partido.equipoLocalId {
+                            jugadorLink(id: gol.jugadorId, alineacion: .leading)
+                            Spacer()
+                            Text("\(gol.minuto ?? 0)'")
+                                .font(.caption).foregroundColor(.secondary)
+                                .monospacedDigit()
+                        } else {
+                            Text("\(gol.minuto ?? 0)'")
+                                .font(.caption).foregroundColor(.secondary)
+                                .monospacedDigit()
+                            Spacer()
+                            jugadorLink(id: gol.jugadorId, alineacion: .trailing)
+                        }
                     }
                 }
-                .font(.subheadline)
             }
         }
-        .padding()
-        .background(Color(.systemGray6))
-        .cornerRadius(12)
     }
+
+    // MARK: - Tarjetas
 
     var seccionTarjetas: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text("Tarjetas")
-                .font(.headline)
-            ForEach(tarjetas) { tarjeta in
-                HStack {
-                    Text(tarjeta.tipo == "amarilla" ? "🟨" : "🟥")
-                    jugadorLink(id: tarjeta.jugadorId)
-                    Spacer()
-                    Text("\(tarjeta.minuto ?? 0)'")
-                        .foregroundColor(.secondary)
+        InfoCard(titulo: "Tarjetas") {
+            VStack(spacing: 10) {
+                ForEach(tarjetas) { tarjeta in
+                    HStack(spacing: 10) {
+                        tarjetaIcon(tipo: tarjeta.tipo)
+                        jugadorLink(id: tarjeta.jugadorId, alineacion: .leading)
+                        Spacer()
+                        Text(tarjeta.tipo == "amarilla" ? "Amarilla" : tarjeta.tipo == "doble_amarilla" ? "2ª amarilla" : "Roja")
+                            .font(.caption).foregroundColor(.secondary)
+                        Text("\(tarjeta.minuto ?? 0)'")
+                            .font(.caption).foregroundColor(.secondary).monospacedDigit()
+                    }
                 }
-                .font(.subheadline)
             }
         }
-        .padding()
-        .background(Color(.systemGray6))
-        .cornerRadius(12)
     }
+
+    func tarjetaIcon(tipo: String) -> some View {
+        let color: Color = tipo == "amarilla" ? .yellow : .red
+        return RoundedRectangle(cornerRadius: 3)
+            .fill(color)
+            .frame(width: 10, height: 14)
+    }
+
+    // MARK: - Sustituciones
 
     var seccionSustituciones: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text("Sustituciones")
-                .font(.headline)
-            ForEach(sustituciones) { s in
-                HStack {
-                    VStack(alignment: .leading) {
-                        HStack(spacing: 4) {
-                            Text("▲").foregroundColor(.green)
-                            jugadorLink(id: s.jugadorEntraId).foregroundColor(.green)
+        InfoCard(titulo: "Sustituciones") {
+            VStack(spacing: 10) {
+                ForEach(sustituciones) { s in
+                    HStack(alignment: .top, spacing: 12) {
+                        VStack(alignment: .leading, spacing: 4) {
+                            HStack(spacing: 6) {
+                                Image(systemName: "arrow.up.circle.fill")
+                                    .foregroundColor(.green).font(.caption)
+                                jugadorLink(id: s.jugadorEntraId, alineacion: .leading)
+                            }
+                            HStack(spacing: 6) {
+                                Image(systemName: "arrow.down.circle.fill")
+                                    .foregroundColor(.red).font(.caption)
+                                jugadorLink(id: s.jugadorSaleId, alineacion: .leading)
+                            }
                         }
-                        HStack(spacing: 4) {
-                            Text("▼").foregroundColor(.red)
-                            jugadorLink(id: s.jugadorSaleId).foregroundColor(.red)
-                        }
+                        Spacer()
+                        Text("\(s.minuto ?? 0)'")
+                            .font(.caption).foregroundColor(.secondary)
+                            .monospacedDigit().padding(.top, 2)
                     }
-                    Spacer()
-                    Text("\(s.minuto ?? 0)'")
-                        .foregroundColor(.secondary)
                 }
-                .font(.subheadline)
             }
         }
-        .padding()
-        .background(Color(.systemGray6))
-        .cornerRadius(12)
     }
+
+    // MARK: - Alineaciones
 
     var seccionAlineaciones: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("Alineaciones")
-                .font(.headline)
+        InfoCard(titulo: "Alineaciones") {
             HStack(alignment: .top, spacing: 16) {
-                alineacionEquipo(equipoId: partido.equipoLocalId)
+                alineacionColumna(equipoId: partido.equipoLocalId)
                 Divider()
-                alineacionEquipo(equipoId: partido.equipoVisitanteId)
+                alineacionColumna(equipoId: partido.equipoVisitanteId)
             }
         }
-        .padding()
-        .background(Color(.systemGray6))
-        .cornerRadius(12)
     }
 
-    func alineacionEquipo(equipoId: UUID) -> some View {
+    func alineacionColumna(equipoId: UUID) -> some View {
         let titulares = alineaciones.filter { $0.equipoId == equipoId && $0.rol == "titular" }
         let suplentes = alineaciones.filter { $0.equipoId == equipoId && $0.rol == "suplente" }
-        return VStack(alignment: .leading, spacing: 4) {
+        return VStack(alignment: .leading, spacing: 6) {
             Text(equipos[equipoId]?.nombre ?? "")
-                .font(.caption)
-                .fontWeight(.bold)
-            Text("Titulares").font(.caption2).foregroundColor(.secondary)
-            ForEach(titulares) { a in
-                jugadorLink(id: a.jugadorId).font(.caption)
+                .font(.caption).fontWeight(.bold).lineLimit(1)
+
+            if !titulares.isEmpty {
+                Text("Titulares")
+                    .font(.caption2).foregroundColor(.secondary)
+                    .padding(.top, 2)
+                ForEach(titulares) { a in
+                    jugadorLink(id: a.jugadorId, alineacion: .leading)
+                        .font(.caption)
+                }
             }
             if !suplentes.isEmpty {
-                Text("Suplentes").font(.caption2).foregroundColor(.secondary).padding(.top, 4)
+                Text("Suplentes")
+                    .font(.caption2).foregroundColor(.secondary)
+                    .padding(.top, 6)
                 ForEach(suplentes) { a in
-                    jugadorLink(id: a.jugadorId).font(.caption)
+                    jugadorLink(id: a.jugadorId, alineacion: .leading)
+                        .font(.caption)
+                        .foregroundColor(.secondary)
                 }
             }
         }
@@ -190,15 +222,18 @@ struct PartidoDetalleView: View {
     }
 
     @ViewBuilder
-    func jugadorLink(id: UUID) -> some View {
+    func jugadorLink(id: UUID, alineacion: HorizontalAlignment) -> some View {
         if let jugador = jugadores[id] {
             NavigationLink(destination: JugadorDetalleView(jugador: jugador)) {
                 Text(jugador.nombre)
+                    .multilineTextAlignment(alineacion == .leading ? .leading : .trailing)
             }
         } else {
-            Text("...")
+            Text("—").foregroundColor(.secondary)
         }
     }
+
+    // MARK: - Carga
 
     func cargar() async {
         await MainActor.run { errorMsg = nil }
@@ -214,8 +249,7 @@ struct PartidoDetalleView: View {
             let ids = Set(
                 gs.map { $0.jugadorId } +
                 ts.map { $0.jugadorId } +
-                ss.map { $0.jugadorSaleId } +
-                ss.map { $0.jugadorEntraId } +
+                ss.map { $0.jugadorSaleId } + ss.map { $0.jugadorEntraId } +
                 as_.map { $0.jugadorId }
             )
             for id in ids {
@@ -236,5 +270,25 @@ struct PartidoDetalleView: View {
                 self.cargando = false
             }
         }
+    }
+}
+
+// MARK: - InfoCard
+
+struct InfoCard<Content: View>: View {
+    let titulo: String
+    @ViewBuilder let contenido: Content
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text(titulo)
+                .font(.headline)
+                .fontWeight(.semibold)
+            contenido
+        }
+        .padding(16)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color(.secondarySystemGroupedBackground))
+        .cornerRadius(14)
     }
 }

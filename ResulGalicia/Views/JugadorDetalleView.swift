@@ -15,82 +15,92 @@ struct JugadorDetalleView: View {
     var amarillas: Int { tarjetas.filter { $0.tipo == "amarilla" }.count }
     var rojas: Int { tarjetas.filter { $0.tipo != "amarilla" }.count }
     var partidos: Int { alineaciones.count }
+    var porcentajeJugado: Int {
+        guard minutosPosibles > 0 else { return 0 }
+        return Int(Double(minutosJugados) / Double(minutosPosibles) * 100)
+    }
 
     var body: some View {
         ScrollView {
-            VStack(spacing: 16) {
-                VStack(spacing: 4) {
+            VStack(spacing: 14) {
+                // Cabecera jugador
+                VStack(spacing: 10) {
+                    InicialCircle(nombre: jugador.nombre, color: .blue, size: 72)
                     Text(jugador.nombre)
-                        .font(.title2)
-                        .fontWeight(.bold)
-                        .multilineTextAlignment(.center)
+                        .font(.title2).fontWeight(.bold).multilineTextAlignment(.center)
                 }
-                .padding()
                 .frame(maxWidth: .infinity)
-                .background(Color(.systemGray6))
-                .cornerRadius(12)
+                .padding(20)
+                .background(Color(.secondarySystemGroupedBackground))
+                .cornerRadius(16)
 
                 if cargando {
                     ProgressView()
                 } else if let msg = errorMsg {
-                    ErrorStateView(mensaje: msg) {
-                        Task { await cargar() }
-                    }
+                    ErrorStateView(mensaje: msg) { Task { await cargar() } }
                 } else {
-                    LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible()), GridItem(.flexible())], spacing: 12) {
-                        StatBox(valor: "\(partidos)", etiqueta: "Partidos")
-                        StatBox(valor: "\(totalGoles)", etiqueta: "Goles")
-                        StatBox(valor: "\(minutosJugados)'", etiqueta: "Minutos")
-                        StatBox(valor: minutosPosibles > 0 ? "\(Int(Double(minutosJugados) / Double(minutosPosibles) * 100))%" : "0%", etiqueta: "% Jugado")
-                        StatBox(valor: "\(amarillas)🟨", etiqueta: "Amarillas")
-                        StatBox(valor: "\(rojas)🟥", etiqueta: "Rojas")
+                    // Stats
+                    InfoCard(titulo: "Estadísticas") {
+                        LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 3), spacing: 12) {
+                            StatBox(valor: "\(partidos)", etiqueta: "Partidos")
+                            StatBox(valor: "\(totalGoles)", etiqueta: "Goles")
+                            StatBox(valor: "\(minutosJugados)'", etiqueta: "Minutos")
+                            StatBox(valor: "\(porcentajeJugado)%", etiqueta: "% Jugado")
+                            StatBox(valor: "\(amarillas)", etiqueta: "🟨 Amarillas")
+                            StatBox(valor: "\(rojas)", etiqueta: "🟥 Rojas")
+                        }
                     }
 
+                    // Goles
                     if !goles.isEmpty {
-                        VStack(alignment: .leading, spacing: 8) {
-                            Text("Goles")
-                                .font(.headline)
-                            ForEach(goles) { gol in
-                                HStack {
-                                    Text("⚽")
-                                    Text("Min. \(gol.minuto ?? 0)")
-                                        .font(.subheadline)
-                                    Spacer()
-                                    Text(gol.marcador ?? "")
-                                        .font(.caption)
-                                        .foregroundColor(.secondary)
+                        InfoCard(titulo: "⚽ Goles") {
+                            VStack(spacing: 8) {
+                                ForEach(goles) { gol in
+                                    HStack {
+                                        Label("Min. \(gol.minuto ?? 0)", systemImage: "clock")
+                                            .font(.subheadline)
+                                        Spacer()
+                                        if let marcador = gol.marcador, !marcador.isEmpty {
+                                            Text(marcador)
+                                                .font(.caption)
+                                                .foregroundColor(.secondary)
+                                                .padding(.horizontal, 8).padding(.vertical, 3)
+                                                .background(Color(.tertiarySystemFill))
+                                                .cornerRadius(6)
+                                        }
+                                    }
                                 }
                             }
                         }
-                        .padding()
-                        .background(Color(.systemGray6))
-                        .cornerRadius(12)
                     }
 
+                    // Tarjetas
                     if !tarjetas.isEmpty {
-                        VStack(alignment: .leading, spacing: 8) {
-                            Text("Tarjetas")
-                                .font(.headline)
-                            ForEach(tarjetas) { tarjeta in
-                                HStack {
-                                    Text(tarjeta.tipo == "amarilla" ? "🟨" : "🟥")
-                                    Text(tarjeta.tipo)
-                                        .font(.subheadline)
-                                    Spacer()
-                                    Text("Min. \(tarjeta.minuto ?? 0)")
-                                        .font(.caption)
-                                        .foregroundColor(.secondary)
+                        InfoCard(titulo: "Tarjetas") {
+                            VStack(spacing: 8) {
+                                ForEach(tarjetas) { tarjeta in
+                                    HStack {
+                                        RoundedRectangle(cornerRadius: 3)
+                                            .fill(tarjeta.tipo == "amarilla" ? Color.yellow : Color.red)
+                                            .frame(width: 10, height: 14)
+                                        Text(tarjeta.tipo == "amarilla" ? "Amarilla"
+                                             : tarjeta.tipo == "doble_amarilla" ? "2ª Amarilla"
+                                             : "Roja directa")
+                                            .font(.subheadline)
+                                        Spacer()
+                                        Label("Min. \(tarjeta.minuto ?? 0)", systemImage: "clock")
+                                            .font(.caption).foregroundColor(.secondary)
+                                    }
                                 }
                             }
                         }
-                        .padding()
-                        .background(Color(.systemGray6))
-                        .cornerRadius(12)
                     }
                 }
             }
-            .padding()
+            .padding(.horizontal, 16)
+            .padding(.vertical, 12)
         }
+        .background(Color(.systemGroupedBackground))
         .navigationTitle("Jugador")
         .navigationBarTitleDisplayMode(.inline)
         .task { await cargar() }
@@ -118,22 +128,24 @@ struct JugadorDetalleView: View {
     }
 }
 
+// MARK: - StatBox
+
 struct StatBox: View {
     let valor: String
     let etiqueta: String
 
     var body: some View {
-        VStack(spacing: 4) {
+        VStack(spacing: 5) {
             Text(valor)
-                .font(.title3)
-                .fontWeight(.bold)
+                .font(.title3).fontWeight(.bold)
+                .minimumScaleFactor(0.7).lineLimit(1)
             Text(etiqueta)
-                .font(.caption)
-                .foregroundColor(.secondary)
+                .font(.caption2).foregroundColor(.secondary)
+                .multilineTextAlignment(.center)
         }
         .frame(maxWidth: .infinity)
-        .padding()
-        .background(Color(.systemGray6))
+        .padding(.vertical, 12).padding(.horizontal, 8)
+        .background(Color(.tertiarySystemFill))
         .cornerRadius(10)
     }
 }

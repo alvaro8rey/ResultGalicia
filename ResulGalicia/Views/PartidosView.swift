@@ -23,21 +23,23 @@ struct PartidosView: View {
                 if cargando {
                     ProgressView()
                 } else if let msg = errorMsg {
-                    ErrorStateView(mensaje: msg) {
-                        Task { await cargar() }
-                    }
+                    ErrorStateView(mensaje: msg) { Task { await cargar() } }
                 } else {
                     VStack(spacing: 0) {
                         if jornadasDisponibles.count > 1 {
                             ScrollView(.horizontal, showsIndicators: false) {
                                 HStack(spacing: 8) {
-                                    jornadaChip(label: "Todas", jornada: nil)
+                                    JornadaChip(label: "Todas", seleccionada: jornadaSeleccionada == nil) {
+                                        jornadaSeleccionada = nil
+                                    }
                                     ForEach(jornadasDisponibles, id: \.self) { j in
-                                        jornadaChip(label: "J\(j)", jornada: j)
+                                        JornadaChip(label: "J\(j)", seleccionada: jornadaSeleccionada == j) {
+                                            jornadaSeleccionada = j
+                                        }
                                     }
                                 }
-                                .padding(.horizontal)
-                                .padding(.vertical, 8)
+                                .padding(.horizontal, 16)
+                                .padding(.vertical, 10)
                             }
                             Divider()
                         }
@@ -45,6 +47,7 @@ struct PartidosView: View {
                             NavigationLink(destination: PartidoDetalleView(partido: partido, equipos: equipos)) {
                                 PartidoRowView(partido: partido, equipos: equipos)
                             }
+                            .listRowInsets(EdgeInsets(top: 6, leading: 16, bottom: 6, trailing: 16))
                         }
                         .listStyle(.plain)
                         .refreshable { await cargar() }
@@ -52,23 +55,7 @@ struct PartidosView: View {
                 }
             }
             .navigationTitle("Partidos")
-            .task {
-                await cargar()
-            }
-        }
-    }
-
-    func jornadaChip(label: String, jornada: Int?) -> some View {
-        let seleccionada = jornadaSeleccionada == jornada
-        return Button(action: { jornadaSeleccionada = jornada }) {
-            Text(label)
-                .font(.caption)
-                .fontWeight(seleccionada ? .bold : .regular)
-                .padding(.horizontal, 12)
-                .padding(.vertical, 6)
-                .background(seleccionada ? Color.blue : Color(.systemGray5))
-                .foregroundColor(seleccionada ? .white : .primary)
-                .cornerRadius(16)
+            .task { await cargar() }
         }
     }
 
@@ -103,37 +90,53 @@ struct PartidoRowView: View {
     let partido: Partido
     let equipos: [UUID: Equipo]
 
+    private var local: String { equipos[partido.equipoLocalId]?.nombre ?? "..." }
+    private var visitante: String { equipos[partido.equipoVisitanteId]?.nombre ?? "..." }
+
     var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
+        VStack(spacing: 10) {
+            // Metadatos
             HStack {
                 if let fecha = partido.fecha {
-                    Text(fecha)
-                        .font(.caption)
+                    Label(fecha, systemImage: "calendar")
+                        .font(.caption2)
                         .foregroundColor(.secondary)
                 }
                 Spacer()
                 if let jornada = partido.jornada {
-                    Text("J\(jornada)")
+                    Text("Jornada \(jornada)")
                         .font(.caption2)
                         .foregroundColor(.secondary)
                 }
             }
-            HStack {
-                Text(equipos[partido.equipoLocalId]?.nombre ?? "...")
+
+            // Equipos y marcador
+            HStack(spacing: 10) {
+                Text(local)
                     .font(.subheadline)
-                    .fontWeight(.medium)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                Text("\(partido.golesLocal) - \(partido.golesVisitante)")
-                    .font(.headline)
-                    .fontWeight(.bold)
-                    .padding(.horizontal, 8)
-                Text(equipos[partido.equipoVisitanteId]?.nombre ?? "...")
-                    .font(.subheadline)
-                    .fontWeight(.medium)
+                    .fontWeight(.semibold)
+                    .lineLimit(2)
+                    .multilineTextAlignment(.trailing)
                     .frame(maxWidth: .infinity, alignment: .trailing)
+
+                Text("\(partido.golesLocal) – \(partido.golesVisitante)")
+                    .font(.title3)
+                    .fontWeight(.bold)
+                    .monospacedDigit()
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 6)
+                    .background(Color(.tertiarySystemFill))
+                    .cornerRadius(8)
+
+                Text(visitante)
+                    .font(.subheadline)
+                    .fontWeight(.semibold)
+                    .lineLimit(2)
+                    .multilineTextAlignment(.leading)
+                    .frame(maxWidth: .infinity, alignment: .leading)
             }
         }
-        .padding(.vertical, 4)
+        .padding(.vertical, 6)
     }
 }
 
@@ -143,18 +146,19 @@ struct ErrorStateView: View {
 
     var body: some View {
         VStack(spacing: 16) {
-            Image(systemName: "exclamationmark.triangle")
-                .font(.system(size: 40))
+            Image(systemName: "exclamationmark.triangle.fill")
+                .font(.system(size: 44))
                 .foregroundColor(.orange)
             Text(mensaje)
                 .font(.headline)
                 .multilineTextAlignment(.center)
             Text("Comprueba tu conexión e inténtalo de nuevo")
-                .font(.caption)
+                .font(.subheadline)
                 .foregroundColor(.secondary)
                 .multilineTextAlignment(.center)
             Button("Reintentar", action: reintentar)
                 .buttonStyle(.bordered)
+                .controlSize(.large)
         }
         .padding(32)
     }

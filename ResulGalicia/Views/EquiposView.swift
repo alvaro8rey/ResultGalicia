@@ -12,22 +12,12 @@ struct EquiposView: View {
                 if cargando {
                     ProgressView()
                 } else if let msg = errorMsg {
-                    ErrorStateView(mensaje: msg) {
-                        Task { await cargar() }
-                    }
+                    ErrorStateView(mensaje: msg) { Task { await cargar() } }
                 } else {
                     List(equipos) { equipo in
                         NavigationLink(destination: EquipoDetalleView(equipo: equipo)) {
-                            HStack(spacing: 12) {
-                                Circle()
-                                    .fill(Color.blue.opacity(0.15))
-                                    .frame(width: 44, height: 44)
-                                    .overlay(
-                                        Text(String(equipo.nombre.prefix(2)))
-                                            .font(.subheadline)
-                                            .fontWeight(.bold)
-                                            .foregroundColor(.blue)
-                                    )
+                            HStack(spacing: 14) {
+                                InicialCircle(nombre: equipo.nombre, color: .blue, size: 44)
                                 Text(equipo.nombre)
                                     .font(.subheadline)
                                     .fontWeight(.medium)
@@ -48,10 +38,7 @@ struct EquiposView: View {
         await MainActor.run { errorMsg = nil }
         do {
             let es = try await service.fetchEquipos()
-            await MainActor.run {
-                self.equipos = es
-                self.cargando = false
-            }
+            await MainActor.run { self.equipos = es; self.cargando = false }
         } catch {
             await MainActor.run {
                 self.errorMsg = "No se pudieron cargar los equipos"
@@ -60,6 +47,8 @@ struct EquiposView: View {
         }
     }
 }
+
+// MARK: - Equipo Detalle
 
 struct EquipoDetalleView: View {
     let equipo: Equipo
@@ -70,166 +59,133 @@ struct EquipoDetalleView: View {
     @State private var cargando = true
     @State private var errorMsg: String? = nil
 
-    var victorias: Int { partidos.filter {
-        ($0.equipoLocalId == equipo.id && $0.golesLocal > $0.golesVisitante) ||
-        ($0.equipoVisitanteId == equipo.id && $0.golesVisitante > $0.golesLocal)
-    }.count }
-
+    var victorias: Int {
+        partidos.filter {
+            ($0.equipoLocalId == equipo.id && $0.golesLocal > $0.golesVisitante) ||
+            ($0.equipoVisitanteId == equipo.id && $0.golesVisitante > $0.golesLocal)
+        }.count
+    }
     var empates: Int { partidos.filter { $0.golesLocal == $0.golesVisitante }.count }
     var derrotas: Int { partidos.count - victorias - empates }
     var puntos: Int { victorias * 3 + empates }
     var golesFavor: Int {
-        partidos.reduce(0) {
-            $0 + ($1.equipoLocalId == equipo.id ? $1.golesLocal : $1.golesVisitante)
-        }
+        partidos.reduce(0) { $0 + ($1.equipoLocalId == equipo.id ? $1.golesLocal : $1.golesVisitante) }
     }
     var golesContra: Int {
-        partidos.reduce(0) {
-            $0 + ($1.equipoLocalId == equipo.id ? $1.golesVisitante : $1.golesLocal)
-        }
+        partidos.reduce(0) { $0 + ($1.equipoLocalId == equipo.id ? $1.golesVisitante : $1.golesLocal) }
     }
 
     var body: some View {
         ScrollView {
-            VStack(spacing: 16) {
-                VStack(spacing: 8) {
-                    Circle()
-                        .fill(Color.blue.opacity(0.15))
-                        .frame(width: 72, height: 72)
-                        .overlay(
-                            Text(String(equipo.nombre.prefix(2)))
-                                .font(.title2)
-                                .fontWeight(.bold)
-                                .foregroundColor(.blue)
-                        )
+            VStack(spacing: 14) {
+                // Cabecera
+                VStack(spacing: 10) {
+                    InicialCircle(nombre: equipo.nombre, color: .blue, size: 72)
                     Text(equipo.nombre)
-                        .font(.title3)
-                        .fontWeight(.bold)
-                        .multilineTextAlignment(.center)
+                        .font(.title2).fontWeight(.bold).multilineTextAlignment(.center)
                 }
                 .frame(maxWidth: .infinity)
-                .padding()
-                .background(Color(.systemGray6))
-                .cornerRadius(12)
+                .padding(20)
+                .background(Color(.secondarySystemGroupedBackground))
+                .cornerRadius(16)
 
                 if cargando {
                     ProgressView()
                 } else if let msg = errorMsg {
-                    ErrorStateView(mensaje: msg) {
-                        Task { await cargar() }
-                    }
+                    ErrorStateView(mensaje: msg) { Task { await cargar() } }
                 } else {
-                    VStack(alignment: .leading, spacing: 10) {
-                        Text("Temporada")
-                            .font(.headline)
-                        LazyVGrid(columns: [
-                            GridItem(.flexible()),
-                            GridItem(.flexible()),
-                            GridItem(.flexible()),
-                            GridItem(.flexible())
-                        ], spacing: 10) {
+                    // Stats temporada
+                    InfoCard(titulo: "Temporada") {
+                        LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 4), spacing: 10) {
                             StatBox(valor: "\(puntos)", etiqueta: "Pts")
                             StatBox(valor: "\(victorias)", etiqueta: "PG")
                             StatBox(valor: "\(empates)", etiqueta: "PE")
                             StatBox(valor: "\(derrotas)", etiqueta: "PP")
                         }
-                        LazyVGrid(columns: [
-                            GridItem(.flexible()),
-                            GridItem(.flexible()),
-                            GridItem(.flexible())
-                        ], spacing: 10) {
+                        LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 3), spacing: 10) {
                             StatBox(valor: "\(golesFavor)", etiqueta: "GF")
                             StatBox(valor: "\(golesContra)", etiqueta: "GC")
-                            StatBox(valor: "\(golesFavor - golesContra > 0 ? "+" : "")\(golesFavor - golesContra)", etiqueta: "DG")
+                            StatBox(
+                                valor: "\(golesFavor - golesContra >= 0 ? "+" : "")\(golesFavor - golesContra)",
+                                etiqueta: "DG"
+                            )
                         }
                     }
-                    .padding()
-                    .background(Color(.systemGray6))
-                    .cornerRadius(12)
 
-                    VStack(alignment: .leading, spacing: 10) {
-                        Text("Plantilla (\(jugadores.count))")
-                            .font(.headline)
-                        ForEach(jugadores) { jugador in
-                            NavigationLink(destination: JugadorDetalleView(jugador: jugador)) {
-                                HStack(spacing: 12) {
-                                    Circle()
-                                        .fill(Color.green.opacity(0.15))
-                                        .frame(width: 36, height: 36)
-                                        .overlay(
-                                            Text(String(jugador.nombre.split(separator: ",").first?.prefix(1) ?? "?"))
-                                                .font(.caption)
-                                                .fontWeight(.bold)
-                                                .foregroundColor(.green)
+                    // Plantilla
+                    InfoCard(titulo: "Plantilla (\(jugadores.count))") {
+                        VStack(spacing: 0) {
+                            ForEach(jugadores) { jugador in
+                                NavigationLink(destination: JugadorDetalleView(jugador: jugador)) {
+                                    HStack(spacing: 12) {
+                                        InicialCircle(
+                                            nombre: String(jugador.nombre.split(separator: ",").first ?? "?"),
+                                            color: .green, size: 36
                                         )
-                                    Text(jugador.nombre)
-                                        .font(.subheadline)
-                                        .foregroundColor(.primary)
-                                    Spacer()
-                                    Image(systemName: "chevron.right")
-                                        .font(.caption)
-                                        .foregroundColor(.secondary)
+                                        Text(jugador.nombre)
+                                            .font(.subheadline)
+                                            .foregroundColor(.primary)
+                                            .lineLimit(1)
+                                        Spacer()
+                                        Image(systemName: "chevron.right")
+                                            .font(.caption2).foregroundColor(.secondary)
+                                    }
+                                    .padding(.vertical, 8)
                                 }
-                                .padding(.vertical, 4)
-                            }
-                            if jugador.id != jugadores.last?.id {
-                                Divider()
+                                if jugador.id != jugadores.last?.id {
+                                    Divider().padding(.leading, 48)
+                                }
                             }
                         }
                     }
-                    .padding()
-                    .background(Color(.systemGray6))
-                    .cornerRadius(12)
 
-                    VStack(alignment: .leading, spacing: 10) {
-                        Text("Partidos")
-                            .font(.headline)
-                        ForEach(partidos.prefix(10)) { partido in
-                            HStack {
-                                Text(partido.fecha ?? "")
-                                    .font(.caption)
-                                    .foregroundColor(.secondary)
-                                    .frame(width: 90, alignment: .leading)
-                                Text(equipos[partido.equipoLocalId]?.nombre ?? "")
-                                    .font(.caption)
-                                    .frame(maxWidth: .infinity, alignment: .trailing)
-                                Text("\(partido.golesLocal)-\(partido.golesVisitante)")
-                                    .font(.caption)
-                                    .fontWeight(.bold)
-                                    .padding(.horizontal, 6)
-                                Text(equipos[partido.equipoVisitanteId]?.nombre ?? "")
-                                    .font(.caption)
-                                    .frame(maxWidth: .infinity, alignment: .leading)
-                                resultadoIcon(partido: partido)
-                            }
-                            if partido.id != partidos.prefix(10).last?.id {
-                                Divider()
+                    // Partidos
+                    InfoCard(titulo: "Partidos") {
+                        VStack(spacing: 0) {
+                            ForEach(partidos.prefix(10)) { partido in
+                                HStack(spacing: 8) {
+                                    Text(partido.fecha ?? "")
+                                        .font(.caption2).foregroundColor(.secondary).lineLimit(1)
+                                        .frame(width: 80, alignment: .leading)
+                                    Text(equipos[partido.equipoLocalId]?.nombre ?? "")
+                                        .font(.caption).lineLimit(1)
+                                        .frame(maxWidth: .infinity, alignment: .trailing)
+                                    Text("\(partido.golesLocal)–\(partido.golesVisitante)")
+                                        .font(.caption).fontWeight(.bold).monospacedDigit()
+                                        .padding(.horizontal, 6)
+                                    Text(equipos[partido.equipoVisitanteId]?.nombre ?? "")
+                                        .font(.caption).lineLimit(1)
+                                        .frame(maxWidth: .infinity, alignment: .leading)
+                                    resultadoBadge(partido: partido)
+                                }
+                                .padding(.vertical, 7)
+                                if partido.id != partidos.prefix(10).last?.id {
+                                    Divider()
+                                }
                             }
                         }
                     }
-                    .padding()
-                    .background(Color(.systemGray6))
-                    .cornerRadius(12)
                 }
             }
-            .padding()
+            .padding(.horizontal, 16)
+            .padding(.vertical, 12)
         }
+        .background(Color(.systemGroupedBackground))
         .navigationTitle(equipo.nombre)
         .navigationBarTitleDisplayMode(.inline)
         .task { await cargar() }
     }
 
-    func resultadoIcon(partido: Partido) -> some View {
+    func resultadoBadge(partido: Partido) -> some View {
         let gano = (partido.equipoLocalId == equipo.id && partido.golesLocal > partido.golesVisitante) ||
                    (partido.equipoVisitanteId == equipo.id && partido.golesVisitante > partido.golesLocal)
         let empato = partido.golesLocal == partido.golesVisitante
-        return Text(gano ? "V" : empato ? "E" : "D")
-            .font(.caption2)
-            .fontWeight(.bold)
-            .foregroundColor(.white)
+        let color: Color = gano ? .green : empato ? .orange : .red
+        let letra = gano ? "V" : empato ? "E" : "D"
+        return Text(letra)
+            .font(.caption2).fontWeight(.bold).foregroundColor(.white)
             .frame(width: 20, height: 20)
-            .background(gano ? Color.green : empato ? Color.orange : Color.red)
-            .cornerRadius(4)
+            .background(color).cornerRadius(5)
     }
 
     func cargar() async {

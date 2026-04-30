@@ -9,7 +9,16 @@ let supabase = SupabaseClient(
 
 class SupabaseService: ObservableObject {
     
-    func fetchPartidos() async throws -> [Partido] {
+    func fetchPartidos(competicionId: UUID? = nil) async throws -> [Partido] {
+        if let id = competicionId {
+            return try await supabase
+                .from("partidos")
+                .select()
+                .eq("competicion_id", value: id)
+                .order("fecha", ascending: false)
+                .execute()
+                .value
+        }
         return try await supabase
             .from("partidos")
             .select()

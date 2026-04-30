@@ -16,27 +16,95 @@ struct PartidoDetalleView: View {
     var equipoLocal: Equipo? { equipos[partido.equipoLocalId] }
     var equipoVisitante: Equipo? { equipos[partido.equipoVisitanteId] }
 
+    // MARK: - Evento unificado
+
+    struct Evento: Identifiable {
+        let id = UUID()
+        let minuto: Int
+        let tipo: TipoEvento
+        let nombrePrincipal: String
+        let nombreSecundario: String?
+        let esLocal: Bool
+        var jugadorId: UUID?
+        var jugadorSecundarioId: UUID?
+    }
+
+    enum TipoEvento {
+        case gol, amarilla, roja, dobleAmarilla, sustitucion
+
+        var icono: String {
+            switch self {
+            case .gol: return "⚽"
+            case .amarilla: return "🟨"
+            case .roja: return "🟥"
+            case .dobleAmarilla: return "🟨🟥"
+            case .sustitucion: return "🔄"
+            }
+        }
+    }
+
+    var eventos: [Evento] {
+        var lista: [Evento] = []
+
+        for g in goles {
+            lista.append(Evento(
+                minuto: g.minuto ?? 0,
+                tipo: .gol,
+                nombrePrincipal: jugadores[g.jugadorId]?.nombre ?? "—",
+                nombreSecundario: nil,
+                esLocal: g.equipoId == partido.equipoLocalId,
+                jugadorId: g.jugadorId
+            ))
+        }
+        for t in tarjetas {
+            let tipo: TipoEvento = t.tipo == "amarilla" ? .amarilla : t.tipo == "doble_amarilla" ? .dobleAmarilla : .roja
+            lista.append(Evento(
+                minuto: t.minuto ?? 0,
+                tipo: tipo,
+                nombrePrincipal: jugadores[t.jugadorId]?.nombre ?? "—",
+                nombreSecundario: nil,
+                esLocal: t.equipoId == partido.equipoLocalId,
+                jugadorId: t.jugadorId
+            ))
+        }
+        for s in sustituciones {
+            lista.append(Evento(
+                minuto: s.minuto ?? 0,
+                tipo: .sustitucion,
+                nombrePrincipal: jugadores[s.jugadorEntraId]?.nombre ?? "—",
+                nombreSecundario: jugadores[s.jugadorSaleId]?.nombre ?? "—",
+                esLocal: s.equipoId == partido.equipoLocalId,
+                jugadorId: s.jugadorEntraId,
+                jugadorSecundarioId: s.jugadorSaleId
+            ))
+        }
+
+        return lista.sorted { $0.minuto < $1.minuto }
+    }
+
+    // MARK: - Body
+
     var body: some View {
         ScrollView {
-            VStack(spacing: 14) {
+            VStack(spacing: 0) {
                 marcadorView
 
                 if cargando {
-                    ProgressView().padding(.top, 32)
+                    ProgressView().padding(40)
                 } else if let msg = errorMsg {
-                    ErrorStateView(mensaje: msg) { Task { await cargar() } }
+                    ErrorStateView(mensaje: msg) { Task { await cargar() } }.padding()
                 } else {
-                    if !goles.isEmpty { seccionGoles }
-                    if !tarjetas.isEmpty { seccionTarjetas }
-                    if !sustituciones.isEmpty { seccionSustituciones }
-                    seccionAlineaciones
+                    VStack(spacing: 0) {
+                        if !eventos.isEmpty {
+                            timelineView
+                        }
+                        alineacionesView
+                    }
                 }
             }
-            .padding(.horizontal, 16)
-            .padding(.bottom, 24)
         }
         .background(Color(.systemGroupedBackground))
-        .navigationTitle("Partido")
+        .navigationTitle("")
         .navigationBarTitleDisplayMode(.inline)
         .task { await cargar() }
     }
@@ -44,193 +112,187 @@ struct PartidoDetalleView: View {
     // MARK: - Marcador
 
     var marcadorView: some View {
-        ZStack {
+        ZStack(alignment: .bottom) {
             LinearGradient(
-                colors: [Color.blue.opacity(0.75), Color.blue.opacity(0.45)],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
+                colors: [Color(red: 0.08, green: 0.18, blue: 0.52), Color(red: 0.15, green: 0.35, blue: 0.75)],
+                startPoint: .topLeading, endPoint: .bottomTrailing
             )
-            .cornerRadius(16)
 
-            VStack(spacing: 14) {
-                HStack(spacing: 8) {
-                    Text(equipoLocal?.nombre ?? "—")
-                        .font(.headline)
-                        .fontWeight(.bold)
-                        .foregroundColor(.white)
-                        .multilineTextAlignment(.center)
-                        .frame(maxWidth: .infinity)
+            VStack(spacing: 0) {
+                // Equipos y marcador
+                HStack(alignment: .center, spacing: 0) {
+                    // Local
+                    VStack(spacing: 10) {
+                        ZStack {
+                            Circle().fill(.white.opacity(0.15)).frame(width: 64, height: 64)
+                            Text(String((equipoLocal?.nombre ?? "—").prefix(2)).uppercased())
+                                .font(.title2).fontWeight(.black).foregroundColor(.white)
+                        }
+                        Text(equipoLocal?.nombre ?? "—")
+                            .font(.footnote).fontWeight(.semibold).foregroundColor(.white)
+                            .multilineTextAlignment(.center).lineLimit(2)
+                    }
+                    .frame(maxWidth: .infinity)
 
-                    Text("\(partido.golesLocal) – \(partido.golesVisitante)")
-                        .font(.system(size: 38, weight: .black, design: .rounded))
-                        .foregroundColor(.white)
-                        .monospacedDigit()
-                        .padding(.horizontal, 14)
+                    // Score
+                    VStack(spacing: 6) {
+                        Text("\(partido.golesLocal) – \(partido.golesVisitante)")
+                            .font(.system(size: 46, weight: .black, design: .rounded))
+                            .foregroundColor(.white).monospacedDigit()
+                        Text("FINAL")
+                            .font(.system(size: 10, weight: .bold))
+                            .foregroundColor(.white.opacity(0.6))
+                            .kerning(2)
+                    }
+                    .frame(minWidth: 110)
 
-                    Text(equipoVisitante?.nombre ?? "—")
-                        .font(.headline)
-                        .fontWeight(.bold)
-                        .foregroundColor(.white)
-                        .multilineTextAlignment(.center)
-                        .frame(maxWidth: .infinity)
+                    // Visitante
+                    VStack(spacing: 10) {
+                        ZStack {
+                            Circle().fill(.white.opacity(0.15)).frame(width: 64, height: 64)
+                            Text(String((equipoVisitante?.nombre ?? "—").prefix(2)).uppercased())
+                                .font(.title2).fontWeight(.black).foregroundColor(.white)
+                        }
+                        Text(equipoVisitante?.nombre ?? "—")
+                            .font(.footnote).fontWeight(.semibold).foregroundColor(.white)
+                            .multilineTextAlignment(.center).lineLimit(2)
+                    }
+                    .frame(maxWidth: .infinity)
                 }
+                .padding(.top, 28)
+                .padding(.horizontal, 12)
 
-                HStack(spacing: 16) {
+                // Metadatos
+                HStack(spacing: 20) {
                     if let fecha = partido.fecha {
-                        Label(fecha, systemImage: "calendar")
+                        Label(formatearFecha(fecha), systemImage: "calendar")
                     }
                     if let estadio = partido.estadio {
-                        Label(estadio, systemImage: "mappin")
+                        Label(estadio, systemImage: "location.fill")
                     }
                 }
-                .font(.caption)
-                .foregroundColor(.white.opacity(0.85))
+                .font(.caption2)
+                .foregroundColor(.white.opacity(0.75))
+                .padding(.top, 14)
 
                 if let arbitro = partido.arbitro {
-                    Text("Árbitro: \(arbitro)")
-                        .font(.caption2)
-                        .foregroundColor(.white.opacity(0.7))
+                    Text("Árbitro · \(arbitro)")
+                        .font(.caption2).foregroundColor(.white.opacity(0.5))
+                        .padding(.top, 4)
                 }
+
+                Spacer().frame(height: 24)
             }
-            .padding(20)
         }
-        .padding(.top, 8)
+        .frame(maxWidth: .infinity)
     }
 
-    // MARK: - Goles
+    // MARK: - Timeline
 
-    var seccionGoles: some View {
-        InfoCard(titulo: "⚽ Goles") {
-            VStack(spacing: 10) {
-                ForEach(goles) { gol in
-                    HStack {
-                        if gol.equipoId == partido.equipoLocalId {
-                            jugadorLink(id: gol.jugadorId, alineacion: .leading)
-                            Spacer()
-                            Text("\(gol.minuto ?? 0)'")
-                                .font(.caption).foregroundColor(.secondary)
-                                .monospacedDigit()
-                        } else {
-                            Text("\(gol.minuto ?? 0)'")
-                                .font(.caption).foregroundColor(.secondary)
-                                .monospacedDigit()
-                            Spacer()
-                            jugadorLink(id: gol.jugadorId, alineacion: .trailing)
-                        }
-                    }
+    var timelineView: some View {
+        VStack(spacing: 0) {
+            seccionHeader("EVENTOS DEL PARTIDO")
+
+            ForEach(eventos) { evento in
+                EventoTimeline(
+                    evento: evento,
+                    jugadores: jugadores,
+                    localId: partido.equipoLocalId
+                )
+                .contentShape(Rectangle())
+                if evento.id != eventos.last?.id {
+                    Divider().padding(.horizontal, 16)
                 }
             }
         }
-    }
-
-    // MARK: - Tarjetas
-
-    var seccionTarjetas: some View {
-        InfoCard(titulo: "Tarjetas") {
-            VStack(spacing: 10) {
-                ForEach(tarjetas) { tarjeta in
-                    HStack(spacing: 10) {
-                        tarjetaIcon(tipo: tarjeta.tipo)
-                        jugadorLink(id: tarjeta.jugadorId, alineacion: .leading)
-                        Spacer()
-                        Text(tarjeta.tipo == "amarilla" ? "Amarilla" : tarjeta.tipo == "doble_amarilla" ? "2ª amarilla" : "Roja")
-                            .font(.caption).foregroundColor(.secondary)
-                        Text("\(tarjeta.minuto ?? 0)'")
-                            .font(.caption).foregroundColor(.secondary).monospacedDigit()
-                    }
-                }
-            }
-        }
-    }
-
-    func tarjetaIcon(tipo: String) -> some View {
-        let color: Color = tipo == "amarilla" ? .yellow : .red
-        return RoundedRectangle(cornerRadius: 3)
-            .fill(color)
-            .frame(width: 10, height: 14)
-    }
-
-    // MARK: - Sustituciones
-
-    var seccionSustituciones: some View {
-        InfoCard(titulo: "Sustituciones") {
-            VStack(spacing: 10) {
-                ForEach(sustituciones) { s in
-                    HStack(alignment: .top, spacing: 12) {
-                        VStack(alignment: .leading, spacing: 4) {
-                            HStack(spacing: 6) {
-                                Image(systemName: "arrow.up.circle.fill")
-                                    .foregroundColor(.green).font(.caption)
-                                jugadorLink(id: s.jugadorEntraId, alineacion: .leading)
-                            }
-                            HStack(spacing: 6) {
-                                Image(systemName: "arrow.down.circle.fill")
-                                    .foregroundColor(.red).font(.caption)
-                                jugadorLink(id: s.jugadorSaleId, alineacion: .leading)
-                            }
-                        }
-                        Spacer()
-                        Text("\(s.minuto ?? 0)'")
-                            .font(.caption).foregroundColor(.secondary)
-                            .monospacedDigit().padding(.top, 2)
-                    }
-                }
-            }
-        }
+        .background(Color(.secondarySystemGroupedBackground))
+        .padding(.bottom, 12)
     }
 
     // MARK: - Alineaciones
 
-    var seccionAlineaciones: some View {
-        InfoCard(titulo: "Alineaciones") {
-            HStack(alignment: .top, spacing: 16) {
+    var alineacionesView: some View {
+        VStack(spacing: 0) {
+            seccionHeader("ALINEACIONES")
+
+            HStack(alignment: .top, spacing: 0) {
                 alineacionColumna(equipoId: partido.equipoLocalId)
                 Divider()
                 alineacionColumna(equipoId: partido.equipoVisitanteId)
             }
+            .background(Color(.secondarySystemGroupedBackground))
         }
+        .background(Color(.secondarySystemGroupedBackground))
     }
 
     func alineacionColumna(equipoId: UUID) -> some View {
         let titulares = alineaciones.filter { $0.equipoId == equipoId && $0.rol == "titular" }
         let suplentes = alineaciones.filter { $0.equipoId == equipoId && $0.rol == "suplente" }
-        return VStack(alignment: .leading, spacing: 6) {
+        let esLocal = equipoId == partido.equipoLocalId
+
+        return VStack(alignment: esLocal ? .leading : .trailing, spacing: 0) {
+            // Nombre del equipo
             Text(equipos[equipoId]?.nombre ?? "")
                 .font(.caption).fontWeight(.bold).lineLimit(1)
+                .frame(maxWidth: .infinity, alignment: esLocal ? .leading : .trailing)
+                .padding(.horizontal, 14).padding(.vertical, 10)
+                .background(Color(.tertiarySystemFill))
 
             if !titulares.isEmpty {
-                Text("Titulares")
-                    .font(.caption2).foregroundColor(.secondary)
-                    .padding(.top, 2)
+                Text("Once inicial").font(.caption2).foregroundColor(.secondary)
+                    .frame(maxWidth: .infinity, alignment: esLocal ? .leading : .trailing)
+                    .padding(.horizontal, 14).padding(.top, 10).padding(.bottom, 4)
+
                 ForEach(titulares) { a in
-                    jugadorLink(id: a.jugadorId, alineacion: .leading)
-                        .font(.caption)
+                    jugadorAlineacionFila(id: a.jugadorId, esLocal: esLocal)
                 }
             }
+
             if !suplentes.isEmpty {
-                Text("Suplentes")
-                    .font(.caption2).foregroundColor(.secondary)
-                    .padding(.top, 6)
+                Text("Suplentes").font(.caption2).foregroundColor(.secondary)
+                    .frame(maxWidth: .infinity, alignment: esLocal ? .leading : .trailing)
+                    .padding(.horizontal, 14).padding(.top, 12).padding(.bottom, 4)
+
                 ForEach(suplentes) { a in
-                    jugadorLink(id: a.jugadorId, alineacion: .leading)
-                        .font(.caption)
-                        .foregroundColor(.secondary)
+                    jugadorAlineacionFila(id: a.jugadorId, esLocal: esLocal, atenuado: true)
                 }
             }
+
+            Spacer(minLength: 14)
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
+        .frame(maxWidth: .infinity)
     }
 
-    @ViewBuilder
-    func jugadorLink(id: UUID, alineacion: HorizontalAlignment) -> some View {
-        if let jugador = jugadores[id] {
-            NavigationLink(destination: JugadorDetalleView(jugador: jugador)) {
-                Text(jugador.nombre)
-                    .multilineTextAlignment(alineacion == .leading ? .leading : .trailing)
+    func jugadorAlineacionFila(id: UUID, esLocal: Bool, atenuado: Bool = false) -> some View {
+        let nombre = jugadores[id]?.nombre ?? "—"
+        return Group {
+            if let jugador = jugadores[id] {
+                NavigationLink(destination: JugadorDetalleView(jugador: jugador)) {
+                    Text(nombre)
+                        .font(.caption)
+                        .foregroundColor(atenuado ? .secondary : .primary)
+                        .lineLimit(1)
+                        .frame(maxWidth: .infinity, alignment: esLocal ? .leading : .trailing)
+                        .padding(.horizontal, 14).padding(.vertical, 5)
+                }
+            } else {
+                Text(nombre)
+                    .font(.caption).foregroundColor(.secondary)
+                    .frame(maxWidth: .infinity, alignment: esLocal ? .leading : .trailing)
+                    .padding(.horizontal, 14).padding(.vertical, 5)
             }
-        } else {
-            Text("—").foregroundColor(.secondary)
         }
+    }
+
+    func seccionHeader(_ titulo: String) -> some View {
+        Text(titulo)
+            .font(.system(size: 11, weight: .bold))
+            .foregroundColor(.secondary)
+            .kerning(1)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.horizontal, 16)
+            .padding(.vertical, 10)
+            .background(Color(.systemGroupedBackground))
     }
 
     // MARK: - Carga
@@ -273,7 +335,93 @@ struct PartidoDetalleView: View {
     }
 }
 
-// MARK: - InfoCard
+// MARK: - Fila de evento timeline (estilo Sofascore)
+
+struct EventoTimeline: View {
+    let evento: PartidoDetalleView.Evento
+    let jugadores: [UUID: Jugador]
+    let localId: UUID
+
+    var body: some View {
+        HStack(spacing: 0) {
+            // Lado local (derecha)
+            Group {
+                if evento.esLocal {
+                    contenidoEvento(alineacion: .trailing)
+                } else {
+                    Color.clear
+                }
+            }
+            .frame(maxWidth: .infinity)
+
+            // Minuto centro
+            VStack(spacing: 2) {
+                Text("\(evento.minuto)'")
+                    .font(.system(size: 11, weight: .bold))
+                    .foregroundColor(.secondary).monospacedDigit()
+                Text(evento.tipo.icono)
+                    .font(.system(size: 13))
+            }
+            .frame(width: 48)
+            .padding(.vertical, 12)
+
+            // Lado visitante (izquierda)
+            Group {
+                if !evento.esLocal {
+                    contenidoEvento(alineacion: .leading)
+                } else {
+                    Color.clear
+                }
+            }
+            .frame(maxWidth: .infinity)
+        }
+        .padding(.horizontal, 12)
+    }
+
+    @ViewBuilder
+    func contenidoEvento(alineacion: HorizontalAlignment) -> some View {
+        let trailing = alineacion == .trailing
+
+        VStack(alignment: alineacion, spacing: 3) {
+            if evento.tipo == .sustitucion {
+                HStack(spacing: 4) {
+                    if trailing {
+                        Text(evento.nombrePrincipal)
+                            .font(.subheadline).lineLimit(1)
+                        Image(systemName: "arrow.up.circle.fill")
+                            .font(.caption).foregroundColor(.green)
+                    } else {
+                        Image(systemName: "arrow.up.circle.fill")
+                            .font(.caption).foregroundColor(.green)
+                        Text(evento.nombrePrincipal)
+                            .font(.subheadline).lineLimit(1)
+                    }
+                }
+                HStack(spacing: 4) {
+                    if trailing {
+                        Text(evento.nombreSecundario ?? "")
+                            .font(.caption).foregroundColor(.secondary).lineLimit(1)
+                        Image(systemName: "arrow.down.circle.fill")
+                            .font(.caption).foregroundColor(.red)
+                    } else {
+                        Image(systemName: "arrow.down.circle.fill")
+                            .font(.caption).foregroundColor(.red)
+                        Text(evento.nombreSecundario ?? "")
+                            .font(.caption).foregroundColor(.secondary).lineLimit(1)
+                    }
+                }
+            } else {
+                Text(evento.nombrePrincipal)
+                    .font(.subheadline).fontWeight(.medium).lineLimit(1)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: trailing ? .trailing : .leading)
+        .padding(.vertical, 12)
+        .padding(.horizontal, 6)
+    }
+}
+
+// MARK: - InfoCard (para otras vistas)
 
 struct InfoCard<Content: View>: View {
     let titulo: String
@@ -281,9 +429,7 @@ struct InfoCard<Content: View>: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text(titulo)
-                .font(.headline)
-                .fontWeight(.semibold)
+            Text(titulo).font(.headline).fontWeight(.semibold)
             contenido
         }
         .padding(16)

@@ -17,6 +17,17 @@ struct PartidosView: View {
         return partidos.filter { $0.jornada == j }
     }
 
+    var grupos: [(fecha: String, etiqueta: String, partidos: [Partido])] {
+        var dict: [String: [Partido]] = [:]
+        for p in partidosFiltrados {
+            let key = p.fecha ?? "Sin fecha"
+            dict[key, default: []].append(p)
+        }
+        return dict.keys.sorted(by: >).map { key in
+            (fecha: key, etiqueta: formatearFecha(key), partidos: dict[key]!)
+        }
+    }
+
     var body: some View {
         NavigationStack {
             Group {
@@ -27,36 +38,54 @@ struct PartidosView: View {
                 } else {
                     VStack(spacing: 0) {
                         if jornadasDisponibles.count > 1 {
-                            ScrollView(.horizontal, showsIndicators: false) {
-                                HStack(spacing: 8) {
-                                    JornadaChip(label: "Todas", seleccionada: jornadaSeleccionada == nil) {
-                                        jornadaSeleccionada = nil
-                                    }
-                                    ForEach(jornadasDisponibles, id: \.self) { j in
-                                        JornadaChip(label: "J\(j)", seleccionada: jornadaSeleccionada == j) {
-                                            jornadaSeleccionada = j
-                                        }
-                                    }
-                                }
-                                .padding(.horizontal, 16)
-                                .padding(.vertical, 10)
-                            }
-                            Divider()
+                            filtroJornadas
                         }
-                        List(partidosFiltrados) { partido in
-                            NavigationLink(destination: PartidoDetalleView(partido: partido, equipos: equipos)) {
-                                PartidoRowView(partido: partido, equipos: equipos)
-                            }
-                            .listRowInsets(EdgeInsets(top: 6, leading: 16, bottom: 6, trailing: 16))
-                        }
-                        .listStyle(.plain)
-                        .refreshable { await cargar() }
+                        listaPartidos
                     }
                 }
             }
             .navigationTitle("Partidos")
+            .background(Color(.systemGroupedBackground))
             .task { await cargar() }
         }
+    }
+
+    var filtroJornadas: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 8) {
+                JornadaChip(label: "Todas", seleccionada: jornadaSeleccionada == nil) {
+                    jornadaSeleccionada = nil
+                }
+                ForEach(jornadasDisponibles, id: \.self) { j in
+                    JornadaChip(label: "J\(j)", seleccionada: jornadaSeleccionada == j) {
+                        jornadaSeleccionada = j
+                    }
+                }
+            }
+            .padding(.horizontal, 16).padding(.vertical, 10)
+        }
+        .background(Color(.systemBackground))
+        Divider()
+    }
+
+    var listaPartidos: some View {
+        List {
+            ForEach(grupos, id: \.fecha) { grupo in
+                Section {
+                    ForEach(grupo.partidos) { partido in
+                        NavigationLink(destination: PartidoDetalleView(partido: partido, equipos: equipos)) {
+                            PartidoRowFlash(partido: partido, equipos: equipos)
+                        }
+                        .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: 0, trailing: 12))
+                        .listRowSeparatorTint(Color(.separator).opacity(0.5))
+                    }
+                } header: {
+                    FechaHeader(texto: grupo.etiqueta)
+                }
+            }
+        }
+        .listStyle(.plain)
+        .refreshable { await cargar() }
     }
 
     func cargar() async {
@@ -86,59 +115,97 @@ struct PartidosView: View {
     }
 }
 
-struct PartidoRowView: View {
+// MARK: - Row estilo Flashscore
+
+struct PartidoRowFlash: View {
     let partido: Partido
     let equipos: [UUID: Equipo]
 
-    private var local: String { equipos[partido.equipoLocalId]?.nombre ?? "..." }
-    private var visitante: String { equipos[partido.equipoVisitanteId]?.nombre ?? "..." }
+    private var local: String { equipos[partido.equipoLocalId]?.nombre ?? "—" }
+    private var visitante: String { equipos[partido.equipoVisitanteId]?.nombre ?? "—" }
+    private var localGana: Bool { partido.golesLocal > partido.golesVisitante }
+    private var visitanteGana: Bool { partido.golesVisitante > partido.golesLocal }
 
     var body: some View {
-        VStack(spacing: 10) {
-            // Metadatos
-            HStack {
-                if let fecha = partido.fecha {
-                    Label(fecha, systemImage: "calendar")
-                        .font(.caption2)
-                        .foregroundColor(.secondary)
-                }
-                Spacer()
-                if let jornada = partido.jornada {
-                    Text("Jornada \(jornada)")
-                        .font(.caption2)
-                        .foregroundColor(.secondary)
-                }
+        HStack(spacing: 0) {
+            // Columna izquierda: estado del partido
+            VStack(spacing: 4) {
+                Text("FT")
+                    .font(.system(size: 10, weight: .bold))
+                    .foregroundColor(.white)
+                    .padding(.horizontal, 5).padding(.vertical, 2)
+                    .background(Color.gray.opacity(0.7))
+                    .cornerRadius(4)
             }
+            .frame(width: 44)
+            .padding(.vertical, 14)
 
-            // Equipos y marcador
-            HStack(spacing: 10) {
-                Text(local)
-                    .font(.subheadline)
-                    .fontWeight(.semibold)
-                    .lineLimit(2)
-                    .multilineTextAlignment(.trailing)
-                    .frame(maxWidth: .infinity, alignment: .trailing)
+            Divider().frame(height: 44)
 
-                Text("\(partido.golesLocal) – \(partido.golesVisitante)")
-                    .font(.title3)
-                    .fontWeight(.bold)
-                    .monospacedDigit()
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 6)
-                    .background(Color(.tertiarySystemFill))
-                    .cornerRadius(8)
-
-                Text(visitante)
-                    .font(.subheadline)
-                    .fontWeight(.semibold)
-                    .lineLimit(2)
-                    .multilineTextAlignment(.leading)
-                    .frame(maxWidth: .infinity, alignment: .leading)
+            // Equipos apilados
+            VStack(spacing: 0) {
+                equipoFila(nombre: local, goles: partido.golesLocal, gana: localGana)
+                Divider().padding(.leading, 36)
+                equipoFila(nombre: visitante, goles: partido.golesVisitante, gana: visitanteGana)
             }
+            .padding(.leading, 10)
         }
-        .padding(.vertical, 6)
+        .background(Color(.systemBackground))
+    }
+
+    func equipoFila(nombre: String, goles: Int, gana: Bool) -> some View {
+        HStack(spacing: 10) {
+            InicialCircle(nombre: nombre, color: .blue, size: 26)
+            Text(nombre)
+                .font(.subheadline)
+                .fontWeight(gana ? .semibold : .regular)
+                .foregroundColor(gana ? .primary : Color(.label).opacity(0.75))
+                .lineLimit(1)
+                .frame(maxWidth: .infinity, alignment: .leading)
+            Text("\(goles)")
+                .font(.subheadline)
+                .fontWeight(gana ? .bold : .regular)
+                .foregroundColor(gana ? .primary : .secondary)
+                .monospacedDigit()
+                .frame(width: 20, alignment: .trailing)
+        }
+        .padding(.vertical, 10)
+        .padding(.trailing, 4)
     }
 }
+
+// MARK: - Cabecera de fecha
+
+struct FechaHeader: View {
+    let texto: String
+
+    var body: some View {
+        Text(texto)
+            .font(.caption)
+            .fontWeight(.semibold)
+            .foregroundColor(.secondary)
+            .textCase(nil)
+            .padding(.vertical, 6)
+    }
+}
+
+// MARK: - Helpers
+
+func formatearFecha(_ fechaStr: String) -> String {
+    let formatter = DateFormatter()
+    formatter.locale = Locale(identifier: "es_ES")
+    let formatos = ["yyyy-MM-dd", "dd/MM/yyyy", "yyyy-MM-dd'T'HH:mm:ss"]
+    for formato in formatos {
+        formatter.dateFormat = formato
+        if let date = formatter.date(from: fechaStr) {
+            formatter.dateFormat = "EEEE, d 'de' MMMM"
+            return formatter.string(from: date).capitalized
+        }
+    }
+    return fechaStr
+}
+
+// MARK: - ErrorStateView
 
 struct ErrorStateView: View {
     let mensaje: String
@@ -147,18 +214,12 @@ struct ErrorStateView: View {
     var body: some View {
         VStack(spacing: 16) {
             Image(systemName: "exclamationmark.triangle.fill")
-                .font(.system(size: 44))
-                .foregroundColor(.orange)
-            Text(mensaje)
-                .font(.headline)
-                .multilineTextAlignment(.center)
+                .font(.system(size: 44)).foregroundColor(.orange)
+            Text(mensaje).font(.headline).multilineTextAlignment(.center)
             Text("Comprueba tu conexión e inténtalo de nuevo")
-                .font(.subheadline)
-                .foregroundColor(.secondary)
-                .multilineTextAlignment(.center)
+                .font(.subheadline).foregroundColor(.secondary).multilineTextAlignment(.center)
             Button("Reintentar", action: reintentar)
-                .buttonStyle(.bordered)
-                .controlSize(.large)
+                .buttonStyle(.bordered).controlSize(.large)
         }
         .padding(32)
     }

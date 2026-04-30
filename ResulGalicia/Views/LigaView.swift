@@ -145,11 +145,22 @@ struct LigaView: View {
                 Text("No hay partidos").foregroundColor(.secondary).font(.subheadline)
                 Spacer()
             } else {
-                List(partidosFiltrados) { partido in
-                    NavigationLink(destination: PartidoDetalleView(partido: partido, equipos: equipos)) {
-                        PartidoRowView(partido: partido, equipos: equipos)
+                let grupos = Dictionary(grouping: partidosFiltrados) { $0.fecha ?? "Sin fecha" }
+                let fechasOrdenadas = grupos.keys.sorted(by: >)
+                List {
+                    ForEach(fechasOrdenadas, id: \.self) { fecha in
+                        Section {
+                            ForEach(grupos[fecha]!) { partido in
+                                NavigationLink(destination: PartidoDetalleView(partido: partido, equipos: equipos)) {
+                                    PartidoRowFlash(partido: partido, equipos: equipos)
+                                }
+                                .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: 0, trailing: 12))
+                                .listRowSeparatorTint(Color(.separator).opacity(0.5))
+                            }
+                        } header: {
+                            FechaHeader(texto: formatearFecha(fecha))
+                        }
                     }
-                    .listRowInsets(EdgeInsets(top: 6, leading: 16, bottom: 6, trailing: 16))
                 }
                 .listStyle(.plain)
                 .refreshable { await cargar() }

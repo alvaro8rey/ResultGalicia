@@ -140,4 +140,21 @@ class SupabaseService: ObservableObject {
             .execute()
             .value
     }
+
+    func fetchTodosGoles() async throws -> [Gol] {
+        return try await supabase
+            .from("goles")
+            .select()
+            .execute()
+            .value
+    }
+
+    func fetchTodosJugadores() async throws -> [Jugador] {
+        return try await supabase
+            .from("jugadores")
+            .select()
+            .order("nombre")
+            .execute()
+            .value
+    }
 }

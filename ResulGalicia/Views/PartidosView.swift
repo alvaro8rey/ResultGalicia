@@ -127,52 +127,75 @@ struct PartidoRowFlash: View {
     private var visitante: String { equipos[partido.equipoVisitanteId]?.nombre ?? "—" }
     private var localGana: Bool { partido.golesLocal > partido.golesVisitante }
     private var visitanteGana: Bool { partido.golesVisitante > partido.golesLocal }
+    private var empate: Bool { partido.golesLocal == partido.golesVisitante }
 
     var body: some View {
         HStack(spacing: 0) {
-            // Columna izquierda: estado del partido
-            VStack(spacing: 4) {
+            // Estado
+            VStack(spacing: 2) {
                 Text("FT")
-                    .font(.system(size: 10, weight: .bold))
-                    .foregroundColor(.white)
-                    .padding(.horizontal, 5).padding(.vertical, 2)
-                    .background(Color.gray.opacity(0.7))
-                    .cornerRadius(4)
+                    .font(.system(size: 9, weight: .bold))
+                    .foregroundColor(.secondary)
+                    .kerning(0.5)
             }
-            .frame(width: 44)
-            .padding(.vertical, 14)
+            .frame(width: 40)
+            .padding(.vertical, 16)
 
-            Divider().frame(height: 44)
+            // Separador vertical
+            Rectangle()
+                .fill(Color(.separator).opacity(0.5))
+                .frame(width: 0.5)
+                .padding(.vertical, 10)
 
-            // Equipos apilados
+            // Equipos + scores
             VStack(spacing: 0) {
-                equipoFila(nombre: local, goles: partido.golesLocal, gana: localGana)
-                Divider().padding(.leading, 36)
-                equipoFila(nombre: visitante, goles: partido.golesVisitante, gana: visitanteGana)
+                equipoFila(
+                    nombre: local,
+                    goles: partido.golesLocal,
+                    gana: localGana
+                )
+                Rectangle()
+                    .fill(Color(.separator).opacity(0.4))
+                    .frame(height: 0.5)
+                    .padding(.leading, 42)
+                equipoFila(
+                    nombre: visitante,
+                    goles: partido.golesVisitante,
+                    gana: visitanteGana
+                )
             }
-            .padding(.leading, 10)
+            .padding(.leading, 8)
         }
-        .background(Color(.systemBackground))
     }
 
     func equipoFila(nombre: String, goles: Int, gana: Bool) -> some View {
         HStack(spacing: 10) {
-            InicialCircle(nombre: nombre, color: .blue, size: 26)
+            // Círculo inicial pequeño
+            Circle()
+                .fill(Color.blue.opacity(0.1))
+                .frame(width: 28, height: 28)
+                .overlay(
+                    Text(String(nombre.prefix(2)).uppercased())
+                        .font(.system(size: 9, weight: .bold))
+                        .foregroundColor(.blue)
+                )
+
             Text(nombre)
                 .font(.subheadline)
                 .fontWeight(gana ? .semibold : .regular)
-                .foregroundColor(gana ? .primary : Color(.label).opacity(0.75))
+                .foregroundColor(gana ? .primary : .secondary)
                 .lineLimit(1)
                 .frame(maxWidth: .infinity, alignment: .leading)
+
             Text("\(goles)")
                 .font(.subheadline)
                 .fontWeight(gana ? .bold : .regular)
                 .foregroundColor(gana ? .primary : .secondary)
                 .monospacedDigit()
-                .frame(width: 20, alignment: .trailing)
+                .frame(width: 18, alignment: .trailing)
+                .padding(.trailing, 12)
         }
-        .padding(.vertical, 10)
-        .padding(.trailing, 4)
+        .padding(.vertical, 11)
     }
 }
 
@@ -182,12 +205,12 @@ struct FechaHeader: View {
     let texto: String
 
     var body: some View {
-        Text(texto)
-            .font(.caption)
-            .fontWeight(.semibold)
+        Text(texto.uppercased())
+            .font(.system(size: 11, weight: .bold))
             .foregroundColor(.secondary)
+            .kerning(0.5)
             .textCase(nil)
-            .padding(.vertical, 6)
+            .padding(.vertical, 4)
     }
 }
 

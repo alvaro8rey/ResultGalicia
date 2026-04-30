@@ -51,21 +51,23 @@ struct PartidosView: View {
     }
 
     var filtroJornadas: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 8) {
-                JornadaChip(label: "Todas", seleccionada: jornadaSeleccionada == nil) {
-                    jornadaSeleccionada = nil
-                }
-                ForEach(jornadasDisponibles, id: \.self) { j in
-                    JornadaChip(label: "J\(j)", seleccionada: jornadaSeleccionada == j) {
-                        jornadaSeleccionada = j
+        VStack(spacing: 0) {
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 8) {
+                    JornadaChip(label: "Todas", seleccionada: jornadaSeleccionada == nil) {
+                        jornadaSeleccionada = nil
+                    }
+                    ForEach(jornadasDisponibles, id: \.self) { j in
+                        JornadaChip(label: "J\(j)", seleccionada: jornadaSeleccionada == j) {
+                            jornadaSeleccionada = j
+                        }
                     }
                 }
+                .padding(.horizontal, 16).padding(.vertical, 10)
             }
-            .padding(.horizontal, 16).padding(.vertical, 10)
+            .background(Color(.systemBackground))
+            Divider()
         }
-        .background(Color(.systemBackground))
-        Divider()
     }
 
     var listaPartidos: some View {

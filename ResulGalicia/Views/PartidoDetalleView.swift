@@ -31,16 +31,6 @@ struct PartidoDetalleView: View {
 
     enum TipoEvento {
         case gol, amarilla, roja, dobleAmarilla, sustitucion
-
-        var icono: String {
-            switch self {
-            case .gol: return "⚽"
-            case .amarilla: return "🟨"
-            case .roja: return "🟥"
-            case .dobleAmarilla: return "🟨🟥"
-            case .sustitucion: return "🔄"
-            }
-        }
     }
 
     var eventos: [Evento] {
@@ -283,7 +273,7 @@ struct PartidoDetalleView: View {
     }
 
     func jugadorAlineacionFila(id: UUID, esLocal: Bool, atenuado: Bool = false) -> some View {
-        let nombre = jugadores[id]?.nombre ?? "—"
+        let nombre = nombreCorto(jugadores[id]?.nombre ?? "—")
         return Group {
             if let jugador = jugadores[id] {
                 NavigationLink(destination: JugadorDetalleView(jugador: jugador)) {
@@ -354,7 +344,29 @@ struct PartidoDetalleView: View {
     }
 }
 
-// MARK: - Fila de evento timeline (estilo Sofascore)
+// MARK: - Formato de nombre corto
+
+func nombreCorto(_ nombre: String) -> String {
+    guard !nombre.isEmpty, nombre != "—" else { return nombre }
+    if nombre.contains(",") {
+        let partes = nombre.components(separatedBy: ",")
+        let apellido = partes[0].trimmingCharacters(in: .whitespaces)
+        let prenom = partes.count > 1 ? partes[1].trimmingCharacters(in: .whitespaces) : ""
+        let primerNombre = prenom.components(separatedBy: " ").first(where: { !$0.isEmpty }) ?? prenom
+        let formatted = primerNombre.prefix(1).uppercased() + primerNombre.dropFirst().lowercased()
+        let inicial = String(apellido.prefix(1)).uppercased()
+        return inicial.isEmpty ? formatted : "\(formatted) \(inicial)."
+    }
+    let palabras = nombre.components(separatedBy: " ").filter { !$0.isEmpty }
+    if palabras.count >= 2 {
+        let first = palabras[0].prefix(1).uppercased() + palabras[0].dropFirst().lowercased()
+        let initial = String(palabras[1].prefix(1)).uppercased()
+        return "\(first) \(initial)."
+    }
+    return nombre.prefix(1).uppercased() + nombre.dropFirst().lowercased()
+}
+
+// MARK: - Fila de evento timeline
 
 struct EventoTimeline: View {
     let evento: PartidoDetalleView.Evento
@@ -366,77 +378,103 @@ struct EventoTimeline: View {
             // Lado local (derecha)
             Group {
                 if evento.esLocal {
-                    contenidoEvento(alineacion: .trailing)
+                    contenidoEvento(trailing: true)
                 } else {
                     Color.clear
                 }
             }
             .frame(maxWidth: .infinity)
 
-            // Minuto centro
-            VStack(spacing: 2) {
+            // Centro: minuto + icono
+            VStack(spacing: 5) {
                 Text("\(evento.minuto)'")
-                    .font(.system(size: 11, weight: .bold))
-                    .foregroundColor(.secondary).monospacedDigit()
-                Text(evento.tipo.icono)
-                    .font(.system(size: 13))
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundColor(.secondary)
+                    .monospacedDigit()
+                iconoEvento
             }
-            .frame(width: 48)
-            .padding(.vertical, 12)
+            .frame(width: 52)
+            .padding(.vertical, 16)
 
             // Lado visitante (izquierda)
             Group {
                 if !evento.esLocal {
-                    contenidoEvento(alineacion: .leading)
+                    contenidoEvento(trailing: false)
                 } else {
                     Color.clear
                 }
             }
             .frame(maxWidth: .infinity)
         }
-        .padding(.horizontal, 12)
+        .padding(.horizontal, 10)
     }
 
     @ViewBuilder
-    func contenidoEvento(alineacion: HorizontalAlignment) -> some View {
-        let trailing = alineacion == .trailing
+    var iconoEvento: some View {
+        switch evento.tipo {
+        case .gol:
+            Text("⚽").font(.system(size: 15))
+        case .amarilla:
+            RoundedRectangle(cornerRadius: 2)
+                .fill(Color.yellow)
+                .frame(width: 11, height: 16)
+        case .roja:
+            RoundedRectangle(cornerRadius: 2)
+                .fill(Color.red)
+                .frame(width: 11, height: 16)
+        case .dobleAmarilla:
+            ZStack {
+                RoundedRectangle(cornerRadius: 2).fill(Color.yellow)
+                    .frame(width: 11, height: 16).offset(x: -3, y: -2)
+                RoundedRectangle(cornerRadius: 2).fill(Color.red)
+                    .frame(width: 11, height: 16).offset(x: 3, y: 2)
+            }
+            .frame(width: 20, height: 22)
+        case .sustitucion:
+            Image(systemName: "arrow.up.arrow.down")
+                .font(.system(size: 11, weight: .semibold))
+                .foregroundColor(.blue)
+        }
+    }
 
-        VStack(alignment: alineacion, spacing: 3) {
+    @ViewBuilder
+    func contenidoEvento(trailing: Bool) -> some View {
+        VStack(alignment: trailing ? .trailing : .leading, spacing: 5) {
             if evento.tipo == .sustitucion {
-                HStack(spacing: 4) {
+                HStack(spacing: 5) {
                     if trailing {
-                        Text(evento.nombrePrincipal)
-                            .font(.subheadline).lineLimit(1)
+                        Text(nombreCorto(evento.nombrePrincipal))
+                            .font(.system(size: 13, weight: .medium)).lineLimit(1)
                         Image(systemName: "arrow.up.circle.fill")
-                            .font(.caption).foregroundColor(.green)
+                            .font(.system(size: 12)).foregroundColor(.green)
                     } else {
                         Image(systemName: "arrow.up.circle.fill")
-                            .font(.caption).foregroundColor(.green)
-                        Text(evento.nombrePrincipal)
-                            .font(.subheadline).lineLimit(1)
+                            .font(.system(size: 12)).foregroundColor(.green)
+                        Text(nombreCorto(evento.nombrePrincipal))
+                            .font(.system(size: 13, weight: .medium)).lineLimit(1)
                     }
                 }
-                HStack(spacing: 4) {
+                HStack(spacing: 5) {
                     if trailing {
-                        Text(evento.nombreSecundario ?? "")
-                            .font(.caption).foregroundColor(.secondary).lineLimit(1)
+                        Text(nombreCorto(evento.nombreSecundario ?? ""))
+                            .font(.system(size: 12)).foregroundColor(.secondary).lineLimit(1)
                         Image(systemName: "arrow.down.circle.fill")
-                            .font(.caption).foregroundColor(.red)
+                            .font(.system(size: 12)).foregroundColor(.red)
                     } else {
                         Image(systemName: "arrow.down.circle.fill")
-                            .font(.caption).foregroundColor(.red)
-                        Text(evento.nombreSecundario ?? "")
-                            .font(.caption).foregroundColor(.secondary).lineLimit(1)
+                            .font(.system(size: 12)).foregroundColor(.red)
+                        Text(nombreCorto(evento.nombreSecundario ?? ""))
+                            .font(.system(size: 12)).foregroundColor(.secondary).lineLimit(1)
                     }
                 }
             } else {
-                Text(evento.nombrePrincipal)
-                    .font(.subheadline).fontWeight(.medium).lineLimit(1)
+                Text(nombreCorto(evento.nombrePrincipal))
+                    .font(.system(size: 14, weight: .semibold)).lineLimit(1)
             }
         }
         .frame(maxWidth: .infinity, alignment: trailing ? .trailing : .leading)
-        .padding(.vertical, 12)
-        .padding(.horizontal, 6)
+        .padding(.vertical, 16)
+        .padding(.horizontal, 10)
     }
 }
 

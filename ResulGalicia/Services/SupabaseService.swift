@@ -93,6 +93,16 @@ class SupabaseService: ObservableObject {
             .execute()
             .value
     }
+
+    func fetchPartido(id: UUID) async throws -> Partido {
+        return try await supabase
+            .from("partidos")
+            .select()
+            .eq("id", value: id)
+            .single()
+            .execute()
+            .value
+    }
     
     func fetchJugadores(equipoId: UUID) async throws -> [Jugador] {
         return try await supabase

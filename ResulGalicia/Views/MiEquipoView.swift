@@ -333,7 +333,7 @@ struct MiEquipoDashboard: View {
                     if let j = partido.jornada {
                         Text("J\(j)")
                             .font(.system(size: 9, weight: .medium))
-                            .foregroundColor(.tertiary)
+                            .foregroundColor(.secondary.opacity(0.6))
                     }
                 }
                 .padding(.horizontal, 10).padding(.vertical, 10)

@@ -150,6 +150,33 @@ class SupabaseService: ObservableObject {
             .value
     }
 
+    func fetchGolesEquipo(equipoId: UUID) async throws -> [Gol] {
+        return try await supabase
+            .from("goles")
+            .select()
+            .eq("equipo_id", value: equipoId)
+            .execute()
+            .value
+    }
+
+    func fetchTarjetasEquipo(equipoId: UUID) async throws -> [Tarjeta] {
+        return try await supabase
+            .from("tarjetas")
+            .select()
+            .eq("equipo_id", value: equipoId)
+            .execute()
+            .value
+    }
+
+    func fetchAlineacionesEquipo(equipoId: UUID) async throws -> [Alineacion] {
+        return try await supabase
+            .from("alineaciones")
+            .select()
+            .eq("equipo_id", value: equipoId)
+            .execute()
+            .value
+    }
+
     func fetchTodosGoles() async throws -> [Gol] {
         return try await supabase
             .from("goles")

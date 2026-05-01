@@ -5,8 +5,12 @@ struct ContentView: View {
 
     var body: some View {
         TabView {
-            InicioView()
+            MiEquipoView()
                 .tabItem { Label("Inicio", systemImage: "house.fill") }
+                .environmentObject(service)
+
+            InicioView()
+                .tabItem { Label("Buscador", systemImage: "magnifyingglass") }
                 .environmentObject(service)
 
             EquiposView()

@@ -59,8 +59,10 @@ struct EquipoDetalleView: View {
     @State private var golesEquipo: [Gol] = []
     @State private var tarjetasEquipo: [Tarjeta] = []
     @State private var alineacionesEquipo: [Alineacion] = []
+    @State private var clasificacion: [FilaClasificacion] = []
     @State private var cargando = true
     @State private var errorMsg: String? = nil
+    @State private var tabVista = "partidos"
 
     var victorias: Int {
         partidos.filter {
@@ -152,8 +154,34 @@ struct EquipoDetalleView: View {
                         }
                     }
 
-                    // Plantilla
-                    InfoCard(titulo: "Plantilla (\(jugadores.count))") {
+                    // Tab selector
+                    Picker("", selection: $tabVista) {
+                        Text("Partidos").tag("partidos")
+                        Text("Clasificación").tag("clasificacion")
+                        Text("Plantilla").tag("plantilla")
+                    }
+                    .pickerStyle(.segmented)
+
+                    if tabVista == "clasificacion" {
+                        // Clasificación inline
+                        VStack(spacing: 0) {
+                            ClasificacionCabecera()
+                                .padding(.horizontal, 12).padding(.vertical, 8)
+                                .background(Color(.secondarySystemGroupedBackground))
+                            ForEach(Array(clasificacion.enumerated()), id: \.element.id) { i, fila in
+                                let esPropia = fila.id == equipo.id
+                                ClasificacionRow(posicion: i + 1, fila: fila, total: clasificacion.count)
+                                    .padding(.horizontal, 12).padding(.vertical, 2)
+                                    .background(esPropia ? Color.blue.opacity(0.08) : Color(.secondarySystemGroupedBackground))
+                                if i < clasificacion.count - 1 {
+                                    Divider().padding(.leading, 12)
+                                }
+                            }
+                        }
+                        .background(Color(.secondarySystemGroupedBackground))
+                        .cornerRadius(14)
+                    } else if tabVista == "plantilla" {
+                        // Plantilla
                         VStack(spacing: 0) {
                             ForEach(jugadores) { jugador in
                                 NavigationLink(destination: JugadorDetalleView(jugador: jugador)) {
@@ -177,33 +205,37 @@ struct EquipoDetalleView: View {
                                 }
                             }
                         }
-                    }
-
-                    // Partidos
-                    InfoCard(titulo: "Partidos") {
+                        .background(Color(.secondarySystemGroupedBackground))
+                        .cornerRadius(14)
+                    } else {
+                        // Partidos
                         VStack(spacing: 0) {
                             ForEach(partidos.prefix(10)) { partido in
-                                HStack(spacing: 8) {
-                                    Text(partido.fecha ?? "")
-                                        .font(.caption2).foregroundColor(.secondary).lineLimit(1)
-                                        .frame(width: 80, alignment: .leading)
-                                    Text(equipos[partido.equipoLocalId]?.nombre ?? "")
-                                        .font(.caption).lineLimit(1)
-                                        .frame(maxWidth: .infinity, alignment: .trailing)
-                                    Text("\(partido.golesLocal)–\(partido.golesVisitante)")
-                                        .font(.caption).fontWeight(.bold).monospacedDigit()
-                                        .padding(.horizontal, 6)
-                                    Text(equipos[partido.equipoVisitanteId]?.nombre ?? "")
-                                        .font(.caption).lineLimit(1)
-                                        .frame(maxWidth: .infinity, alignment: .leading)
-                                    resultadoBadge(partido: partido)
+                                NavigationLink(destination: PartidoDetalleView(partido: partido, equipos: equipos)) {
+                                    HStack(spacing: 8) {
+                                        Text(partido.fecha ?? "")
+                                            .font(.caption2).foregroundColor(.secondary).lineLimit(1)
+                                            .frame(width: 80, alignment: .leading)
+                                        Text(equipos[partido.equipoLocalId]?.nombre ?? "")
+                                            .font(.caption).lineLimit(1)
+                                            .frame(maxWidth: .infinity, alignment: .trailing)
+                                        Text("\(partido.golesLocal)–\(partido.golesVisitante)")
+                                            .font(.caption).fontWeight(.bold).monospacedDigit()
+                                            .padding(.horizontal, 6)
+                                        Text(equipos[partido.equipoVisitanteId]?.nombre ?? "")
+                                            .font(.caption).lineLimit(1)
+                                            .frame(maxWidth: .infinity, alignment: .leading)
+                                        resultadoBadge(partido: partido)
+                                    }
+                                    .padding(.vertical, 7)
                                 }
-                                .padding(.vertical, 7)
                                 if partido.id != partidos.prefix(10).last?.id {
                                     Divider()
                                 }
                             }
                         }
+                        .background(Color(.secondarySystemGroupedBackground))
+                        .cornerRadius(14)
                     }
                 }
             }
@@ -314,7 +346,7 @@ struct EquipoDetalleView: View {
             async let a = service.fetchAlineacionesEquipo(equipoId: equipo.id)
             let (js, ps, gs, ts, as_) = try await (j, p, g, t, a)
 
-            var eq: [UUID: Equipo] = [:]
+            var eq: [UUID: Equipo] = [equipo.id: equipo]
             for partido in ps {
                 if eq[partido.equipoLocalId] == nil {
                     eq[partido.equipoLocalId] = try await service.fetchEquipo(id: partido.equipoLocalId)
@@ -323,6 +355,24 @@ struct EquipoDetalleView: View {
                     eq[partido.equipoVisitanteId] = try await service.fetchEquipo(id: partido.equipoVisitanteId)
                 }
             }
+
+            // Clasificación de la competición
+            var clasi: [FilaClasificacion] = []
+            if let competicionId = ps.first?.competicionId {
+                let todosPartidos = try await service.fetchPartidos(competicionId: competicionId)
+                let teamIds = Set(todosPartidos.flatMap { [$0.equipoLocalId, $0.equipoVisitanteId] })
+                var todosEquipos: [Equipo] = []
+                for tid in teamIds {
+                    if let e = eq[tid] { todosEquipos.append(e) }
+                    else {
+                        let e = try await service.fetchEquipo(id: tid)
+                        todosEquipos.append(e)
+                        eq[tid] = e
+                    }
+                }
+                clasi = calcularClasificacion(equipos: todosEquipos, partidos: todosPartidos)
+            }
+
             await MainActor.run {
                 self.jugadores = js
                 self.partidos = ps
@@ -330,6 +380,7 @@ struct EquipoDetalleView: View {
                 self.golesEquipo = gs
                 self.tarjetasEquipo = ts
                 self.alineacionesEquipo = as_
+                self.clasificacion = clasi
                 self.cargando = false
             }
         } catch {

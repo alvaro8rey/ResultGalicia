@@ -127,42 +127,38 @@ struct PartidoRowFlash: View {
     private var visitante: String { equipos[partido.equipoVisitanteId]?.nombre ?? "—" }
     private var localGana: Bool { partido.golesLocal > partido.golesVisitante }
     private var visitanteGana: Bool { partido.golesVisitante > partido.golesLocal }
-    private var empate: Bool { partido.golesLocal == partido.golesVisitante }
 
     var body: some View {
         HStack(spacing: 0) {
-            // Estado
-            VStack(spacing: 2) {
+            // Columna estado/jornada
+            VStack(spacing: 3) {
+                if let j = partido.jornada {
+                    Text("J\(j)")
+                        .font(.system(size: 10, weight: .bold))
+                        .foregroundColor(.primary.opacity(0.7))
+                }
                 Text("FT")
-                    .font(.system(size: 9, weight: .bold))
+                    .font(.system(size: 9, weight: .medium))
                     .foregroundColor(.secondary)
                     .kerning(0.5)
             }
-            .frame(width: 40)
-            .padding(.vertical, 16)
+            .frame(width: 38)
+            .padding(.vertical, 14)
 
             // Separador vertical
             Rectangle()
-                .fill(Color(.separator).opacity(0.5))
+                .fill(Color(.separator).opacity(0.4))
                 .frame(width: 0.5)
-                .padding(.vertical, 10)
+                .padding(.vertical, 8)
 
             // Equipos + scores
             VStack(spacing: 0) {
-                equipoFila(
-                    nombre: local,
-                    goles: partido.golesLocal,
-                    gana: localGana
-                )
+                equipoFila(nombre: local, goles: partido.golesLocal, gana: localGana)
                 Rectangle()
-                    .fill(Color(.separator).opacity(0.4))
+                    .fill(Color(.separator).opacity(0.35))
                     .frame(height: 0.5)
-                    .padding(.leading, 42)
-                equipoFila(
-                    nombre: visitante,
-                    goles: partido.golesVisitante,
-                    gana: visitanteGana
-                )
+                    .padding(.leading, 40)
+                equipoFila(nombre: visitante, goles: partido.golesVisitante, gana: visitanteGana)
             }
             .padding(.leading, 8)
         }
@@ -170,32 +166,29 @@ struct PartidoRowFlash: View {
 
     func equipoFila(nombre: String, goles: Int, gana: Bool) -> some View {
         HStack(spacing: 10) {
-            // Círculo inicial pequeño
-            Circle()
-                .fill(Color.blue.opacity(0.1))
-                .frame(width: 28, height: 28)
-                .overlay(
-                    Text(String(nombre.prefix(2)).uppercased())
-                        .font(.system(size: 9, weight: .bold))
-                        .foregroundColor(.blue)
-                )
+            ZStack {
+                RoundedRectangle(cornerRadius: 6)
+                    .fill(Color(.systemGray5))
+                    .frame(width: 26, height: 26)
+                Text(String(nombre.prefix(2)).uppercased())
+                    .font(.system(size: 9, weight: .bold))
+                    .foregroundColor(.secondary)
+            }
 
             Text(nombre)
-                .font(.subheadline)
-                .fontWeight(gana ? .semibold : .regular)
+                .font(.system(size: 14, weight: gana ? .semibold : .regular))
                 .foregroundColor(gana ? .primary : .secondary)
                 .lineLimit(1)
                 .frame(maxWidth: .infinity, alignment: .leading)
 
             Text("\(goles)")
-                .font(.subheadline)
-                .fontWeight(gana ? .bold : .regular)
+                .font(.system(size: 15, weight: gana ? .bold : .regular))
                 .foregroundColor(gana ? .primary : .secondary)
                 .monospacedDigit()
                 .frame(width: 18, alignment: .trailing)
-                .padding(.trailing, 12)
+                .padding(.trailing, 10)
         }
-        .padding(.vertical, 11)
+        .padding(.vertical, 10)
     }
 }
 

@@ -116,14 +116,24 @@ struct EquipoDetalleView: View {
         ScrollView {
             VStack(spacing: 14) {
                 // Cabecera
-                VStack(spacing: 10) {
-                    InicialCircle(nombre: equipo.nombre, color: .blue, size: 72)
-                    Text(equipo.nombre)
-                        .font(.title2).fontWeight(.bold).multilineTextAlignment(.center)
+                ZStack {
+                    Color(red: 0.06, green: 0.06, blue: 0.09)
+                    VStack(spacing: 12) {
+                        ZStack {
+                            RoundedRectangle(cornerRadius: 18)
+                                .fill(.white.opacity(0.08))
+                                .frame(width: 72, height: 72)
+                            Text(String(equipo.nombre.prefix(2)).uppercased())
+                                .font(.system(size: 26, weight: .black))
+                                .foregroundColor(.white)
+                        }
+                        Text(equipo.nombre)
+                            .font(.title2).fontWeight(.bold).foregroundColor(.white)
+                            .multilineTextAlignment(.center)
+                    }
+                    .padding(.vertical, 26).padding(.horizontal, 20)
                 }
                 .frame(maxWidth: .infinity)
-                .padding(20)
-                .background(Color(.secondarySystemGroupedBackground))
                 .cornerRadius(16)
 
                 if cargando {

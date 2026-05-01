@@ -290,37 +290,42 @@ struct LigaCardFavorito: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            HStack {
-                Image(systemName: "trophy.fill")
-                    .font(.title3).foregroundColor(accentColor)
-                Spacer()
-                Button(action: onQuitar) {
-                    Image(systemName: "star.fill")
-                        .font(.caption).foregroundColor(.yellow)
+        VStack(alignment: .leading, spacing: 0) {
+            // Franja de color
+            accentColor.frame(height: 3)
+
+            VStack(alignment: .leading, spacing: 8) {
+                HStack(alignment: .top) {
+                    Image(systemName: "trophy.fill")
+                        .font(.footnote).foregroundColor(accentColor)
+                    Spacer()
+                    Button(action: onQuitar) {
+                        Image(systemName: "star.fill")
+                            .font(.system(size: 11)).foregroundColor(.yellow)
+                    }
+                    .buttonStyle(.plain)
                 }
-                .buttonStyle(.plain)
-            }
 
-            Spacer()
+                Spacer()
 
-            VStack(alignment: .leading, spacing: 3) {
-                Text(competicion.nombre)
-                    .font(.caption).fontWeight(.bold)
-                    .foregroundColor(.primary).lineLimit(2)
-                if let grupo = competicion.grupo {
-                    Text("Grupo \(grupo)")
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(competicion.nombre)
+                        .font(.caption).fontWeight(.semibold)
+                        .foregroundColor(.primary).lineLimit(2)
+                    if let grupo = competicion.grupo {
+                        Text("Gr. \(grupo)")
+                            .font(.caption2).foregroundColor(.secondary)
+                    }
+                    Text(competicion.temporada)
                         .font(.caption2).foregroundColor(.secondary)
                 }
-                Text(competicion.temporada)
-                    .font(.caption2).foregroundColor(.secondary)
             }
+            .padding(12)
         }
-        .padding(14)
-        .frame(width: 150, height: 110)
+        .frame(width: 148, height: 108)
         .background(Color(.secondarySystemGroupedBackground))
-        .cornerRadius(14)
-        .shadow(color: .black.opacity(0.06), radius: 5, x: 0, y: 2)
+        .clipShape(RoundedRectangle(cornerRadius: 12))
+        .shadow(color: .black.opacity(0.05), radius: 4, x: 0, y: 2)
     }
 }
 
@@ -363,14 +368,13 @@ struct InicialCircle: View {
     let size: CGFloat
 
     var body: some View {
-        Circle()
-            .fill(color.opacity(0.12))
-            .frame(width: size, height: size)
-            .overlay(
-                Text(String(nombre.prefix(2)).uppercased())
-                    .font(size >= 44 ? .subheadline : size >= 32 ? .caption : .caption2)
-                    .fontWeight(.bold)
-                    .foregroundColor(color)
-            )
+        ZStack {
+            Circle()
+                .fill(color.opacity(0.14))
+                .frame(width: size, height: size)
+            Text(String(nombre.prefix(2)).uppercased())
+                .font(.system(size: size * 0.33, weight: .bold))
+                .foregroundColor(color.opacity(0.85))
+        }
     }
 }

@@ -217,28 +217,30 @@ struct MiEquipoDashboard: View {
 
     func cabeceraView(eq: Equipo) -> some View {
         ZStack {
-            LinearGradient(
-                colors: [Color(red: 0.08, green: 0.18, blue: 0.52), Color(red: 0.15, green: 0.35, blue: 0.75)],
-                startPoint: .topLeading, endPoint: .bottomTrailing
-            )
-            VStack(spacing: 12) {
+            Color(red: 0.06, green: 0.06, blue: 0.09)
+
+            VStack(spacing: 14) {
                 ZStack {
-                    Circle().fill(.white.opacity(0.15)).frame(width: 80, height: 80)
+                    RoundedRectangle(cornerRadius: 20)
+                        .fill(.white.opacity(0.08))
+                        .frame(width: 78, height: 78)
                     Text(String(eq.nombre.prefix(2)).uppercased())
-                        .font(.largeTitle).fontWeight(.black).foregroundColor(.white)
+                        .font(.system(size: 28, weight: .black))
+                        .foregroundColor(.white)
                 }
                 Text(eq.nombre)
                     .font(.title2).fontWeight(.bold).foregroundColor(.white)
                     .multilineTextAlignment(.center)
                 if let pos = posicion {
-                    Text("Posición \(pos)ª")
-                        .font(.caption).foregroundColor(.white.opacity(0.75))
-                        .padding(.horizontal, 12).padding(.vertical, 4)
-                        .background(.white.opacity(0.15))
-                        .cornerRadius(20)
+                    HStack(spacing: 5) {
+                        Image(systemName: "list.number")
+                            .font(.caption2).foregroundColor(.white.opacity(0.5))
+                        Text("\(pos)º en la clasificación")
+                            .font(.caption).foregroundColor(.white.opacity(0.55))
+                    }
                 }
             }
-            .padding(.vertical, 30).padding(.horizontal, 20)
+            .padding(.vertical, 28).padding(.horizontal, 20)
         }
     }
 
@@ -255,12 +257,16 @@ struct MiEquipoDashboard: View {
     }
 
     func statPill(valor: String, etiqueta: String, color: Color) -> some View {
-        VStack(spacing: 3) {
-            Text(valor).font(.headline).fontWeight(.bold).foregroundColor(color)
-            Text(etiqueta).font(.caption2).foregroundColor(.secondary)
+        VStack(spacing: 4) {
+            Text(valor)
+                .font(.system(size: 18, weight: .bold)).monospacedDigit()
+                .foregroundColor(color == .secondary ? .primary : color)
+            Text(etiqueta)
+                .font(.system(size: 10, weight: .medium))
+                .foregroundColor(.secondary)
         }
         .frame(maxWidth: .infinity)
-        .padding(.vertical, 10)
+        .padding(.vertical, 12)
         .background(Color(.secondarySystemGroupedBackground))
         .cornerRadius(10)
     }
@@ -301,32 +307,40 @@ struct MiEquipoDashboard: View {
         let golesEq = esLocal ? partido.golesLocal : partido.golesVisitante
         let golesRiv = esLocal ? partido.golesVisitante : partido.golesLocal
         let rival = equiposMap[esLocal ? partido.equipoVisitanteId : partido.equipoLocalId]?.nombre ?? "—"
-        let resultado: (String, Color) = golesEq > golesRiv ? ("V", .green) : golesEq < golesRiv ? ("D", .red) : ("E", .orange)
+        let (letra, acento): (String, Color) = golesEq > golesRiv ? ("V", .green) : golesEq < golesRiv ? ("D", .red) : ("E", .orange)
 
         return AnyView(
-            VStack(spacing: 6) {
-                Text(resultado.0)
-                    .font(.system(size: 13, weight: .black))
-                    .foregroundColor(.white)
-                    .frame(width: 28, height: 28)
-                    .background(resultado.1)
-                    .cornerRadius(8)
+            VStack(spacing: 0) {
+                // Franja de resultado
+                acento
+                    .frame(height: 3)
+                    .cornerRadius(1.5)
 
-                Text("\(golesEq)–\(golesRiv)")
-                    .font(.title3).fontWeight(.bold).monospacedDigit()
+                VStack(spacing: 7) {
+                    Text(letra)
+                        .font(.system(size: 11, weight: .black))
+                        .foregroundColor(acento)
 
-                Text(rival)
-                    .font(.caption2).foregroundColor(.secondary)
-                    .lineLimit(2).multilineTextAlignment(.center)
-                    .frame(width: 80)
+                    Text("\(golesEq)–\(golesRiv)")
+                        .font(.system(size: 18, weight: .bold)).monospacedDigit()
 
-                if let j = partido.jornada {
-                    Text("J\(j)").font(.caption2).foregroundColor(.secondary)
+                    Text(rival)
+                        .font(.system(size: 10))
+                        .foregroundColor(.secondary)
+                        .lineLimit(2).multilineTextAlignment(.center)
+                        .frame(width: 72)
+
+                    if let j = partido.jornada {
+                        Text("J\(j)")
+                            .font(.system(size: 9, weight: .medium))
+                            .foregroundColor(.tertiary)
+                    }
                 }
+                .padding(.horizontal, 10).padding(.vertical, 10)
             }
-            .padding(.vertical, 12).padding(.horizontal, 10)
-            .background(Color(.tertiarySystemFill))
-            .cornerRadius(12)
+            .background(Color(.secondarySystemGroupedBackground))
+            .cornerRadius(10)
+            .overlay(RoundedRectangle(cornerRadius: 10).stroke(acento.opacity(0.15), lineWidth: 1))
         )
     }
 

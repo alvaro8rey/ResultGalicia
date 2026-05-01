@@ -104,25 +104,25 @@ struct JugadorDetalleView: View {
 
     var cabeceraView: some View {
         ZStack {
-            LinearGradient(
-                colors: [Color(red: 0.08, green: 0.18, blue: 0.52), Color(red: 0.15, green: 0.35, blue: 0.75)],
-                startPoint: .topLeading, endPoint: .bottomTrailing
-            )
-            VStack(spacing: 10) {
+            Color(red: 0.06, green: 0.06, blue: 0.09)
+            VStack(spacing: 12) {
                 ZStack {
-                    Circle().fill(.white.opacity(0.15)).frame(width: 72, height: 72)
+                    RoundedRectangle(cornerRadius: 18)
+                        .fill(.white.opacity(0.08))
+                        .frame(width: 70, height: 70)
                     Text(String(jugador.nombre.split(separator: " ").compactMap { $0.first }.prefix(2).map(String.init).joined()).uppercased().prefix(2))
-                        .font(.title).fontWeight(.black).foregroundColor(.white)
+                        .font(.system(size: 24, weight: .black))
+                        .foregroundColor(.white)
                 }
                 Text(jugador.nombre)
                     .font(.title3).fontWeight(.bold).foregroundColor(.white)
                     .multilineTextAlignment(.center)
                 if let equipo = equipos.values.first(where: { $0.id == jugador.equipoId }) {
                     Text(equipo.nombre)
-                        .font(.caption).foregroundColor(.white.opacity(0.75))
+                        .font(.caption).foregroundColor(.white.opacity(0.45))
                 }
             }
-            .padding(.vertical, 28)
+            .padding(.vertical, 26)
         }
     }
 
@@ -397,16 +397,17 @@ struct StatBox: View {
     let etiqueta: String
 
     var body: some View {
-        VStack(spacing: 5) {
+        VStack(spacing: 4) {
             Text(valor)
-                .font(.title3).fontWeight(.bold)
+                .font(.system(size: 17, weight: .bold)).monospacedDigit()
                 .minimumScaleFactor(0.7).lineLimit(1)
             Text(etiqueta)
-                .font(.caption2).foregroundColor(.secondary)
+                .font(.system(size: 10, weight: .medium))
+                .foregroundColor(.secondary)
                 .multilineTextAlignment(.center)
         }
         .frame(maxWidth: .infinity)
-        .padding(.vertical, 12).padding(.horizontal, 8)
+        .padding(.vertical, 14).padding(.horizontal, 8)
         .background(Color(.secondarySystemGroupedBackground))
         .cornerRadius(10)
     }

@@ -318,10 +318,10 @@ struct JornadaChip: View {
     var body: some View {
         Button(action: accion) {
             Text(label)
-                .font(.caption).fontWeight(seleccionada ? .bold : .regular)
-                .padding(.horizontal, 14).padding(.vertical, 7)
-                .background(seleccionada ? Color.accentColor : Color(.systemGray5))
-                .foregroundColor(seleccionada ? .white : .primary)
+                .font(.system(size: 13, weight: seleccionada ? .semibold : .regular))
+                .padding(.horizontal, 16).padding(.vertical, 8)
+                .background(seleccionada ? Color.primary : Color(.systemGray5))
+                .foregroundColor(seleccionada ? Color(.systemBackground) : .secondary)
                 .cornerRadius(20)
         }
     }

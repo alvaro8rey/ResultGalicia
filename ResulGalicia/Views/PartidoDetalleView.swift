@@ -112,76 +112,95 @@ struct PartidoDetalleView: View {
     // MARK: - Marcador
 
     var marcadorView: some View {
-        ZStack(alignment: .bottom) {
-            LinearGradient(
-                colors: [Color(red: 0.08, green: 0.18, blue: 0.52), Color(red: 0.15, green: 0.35, blue: 0.75)],
-                startPoint: .topLeading, endPoint: .bottomTrailing
-            )
+        ZStack {
+            Color(red: 0.06, green: 0.06, blue: 0.09)
 
             VStack(spacing: 0) {
+                // Estado
+                Text("FINAL")
+                    .font(.system(size: 10, weight: .semibold))
+                    .foregroundColor(.white.opacity(0.4))
+                    .kerning(2.5)
+                    .padding(.top, 22)
+
                 // Equipos y marcador
                 HStack(alignment: .center, spacing: 0) {
                     // Local
                     VStack(spacing: 10) {
                         ZStack {
-                            Circle().fill(.white.opacity(0.15)).frame(width: 64, height: 64)
+                            RoundedRectangle(cornerRadius: 14)
+                                .fill(.white.opacity(0.07))
+                                .frame(width: 62, height: 62)
                             Text(String((equipoLocal?.nombre ?? "—").prefix(2)).uppercased())
-                                .font(.title2).fontWeight(.black).foregroundColor(.white)
+                                .font(.system(size: 22, weight: .black))
+                                .foregroundColor(.white)
                         }
                         Text(equipoLocal?.nombre ?? "—")
-                            .font(.footnote).fontWeight(.semibold).foregroundColor(.white)
+                            .font(.caption).fontWeight(.medium).foregroundColor(.white.opacity(0.85))
                             .multilineTextAlignment(.center).lineLimit(2)
                     }
                     .frame(maxWidth: .infinity)
 
                     // Score
-                    VStack(spacing: 6) {
-                        Text("\(partido.golesLocal) – \(partido.golesVisitante)")
-                            .font(.system(size: 46, weight: .black, design: .rounded))
+                    HStack(alignment: .center, spacing: 6) {
+                        Text("\(partido.golesLocal)")
+                            .font(.system(size: 52, weight: .black))
                             .foregroundColor(.white).monospacedDigit()
-                        Text("FINAL")
-                            .font(.system(size: 10, weight: .bold))
-                            .foregroundColor(.white.opacity(0.6))
-                            .kerning(2)
+                        Text("–")
+                            .font(.system(size: 28, weight: .thin))
+                            .foregroundColor(.white.opacity(0.35))
+                        Text("\(partido.golesVisitante)")
+                            .font(.system(size: 52, weight: .black))
+                            .foregroundColor(.white).monospacedDigit()
                     }
-                    .frame(minWidth: 110)
+                    .frame(minWidth: 120)
 
                     // Visitante
                     VStack(spacing: 10) {
                         ZStack {
-                            Circle().fill(.white.opacity(0.15)).frame(width: 64, height: 64)
+                            RoundedRectangle(cornerRadius: 14)
+                                .fill(.white.opacity(0.07))
+                                .frame(width: 62, height: 62)
                             Text(String((equipoVisitante?.nombre ?? "—").prefix(2)).uppercased())
-                                .font(.title2).fontWeight(.black).foregroundColor(.white)
+                                .font(.system(size: 22, weight: .black))
+                                .foregroundColor(.white)
                         }
                         Text(equipoVisitante?.nombre ?? "—")
-                            .font(.footnote).fontWeight(.semibold).foregroundColor(.white)
+                            .font(.caption).fontWeight(.medium).foregroundColor(.white.opacity(0.85))
                             .multilineTextAlignment(.center).lineLimit(2)
                     }
                     .frame(maxWidth: .infinity)
                 }
-                .padding(.top, 28)
+                .padding(.top, 16)
                 .padding(.horizontal, 12)
 
+                // Separador
+                Rectangle()
+                    .fill(.white.opacity(0.07))
+                    .frame(height: 1)
+                    .padding(.horizontal, 20)
+                    .padding(.top, 20)
+
                 // Metadatos
-                HStack(spacing: 20) {
+                HStack(spacing: 18) {
                     if let fecha = partido.fecha {
                         Label(formatearFecha(fecha), systemImage: "calendar")
+                            .font(.caption2).foregroundColor(.white.opacity(0.45))
                     }
                     if let estadio = partido.estadio {
-                        Label(estadio, systemImage: "location.fill")
+                        Label(estadio, systemImage: "mappin")
+                            .font(.caption2).foregroundColor(.white.opacity(0.45))
                     }
                 }
-                .font(.caption2)
-                .foregroundColor(.white.opacity(0.75))
-                .padding(.top, 14)
+                .padding(.top, 12)
 
                 if let arbitro = partido.arbitro {
                     Text("Árbitro · \(arbitro)")
-                        .font(.caption2).foregroundColor(.white.opacity(0.5))
+                        .font(.caption2).foregroundColor(.white.opacity(0.3))
                         .padding(.top, 4)
                 }
 
-                Spacer().frame(height: 24)
+                Spacer().frame(height: 20)
             }
         }
         .frame(maxWidth: .infinity)
@@ -428,11 +447,19 @@ struct InfoCard<Content: View>: View {
     @ViewBuilder let contenido: Content
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text(titulo).font(.headline).fontWeight(.semibold)
-            contenido
+        VStack(alignment: .leading, spacing: 0) {
+            Text(titulo.uppercased())
+                .font(.system(size: 11, weight: .bold))
+                .foregroundColor(.secondary)
+                .kerning(1)
+                .padding(.horizontal, 16).padding(.vertical, 10)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(Color(.systemGroupedBackground))
+            VStack(alignment: .leading, spacing: 10) {
+                contenido
+            }
+            .padding(16)
         }
-        .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(Color(.secondarySystemGroupedBackground))
         .cornerRadius(14)

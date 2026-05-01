@@ -59,89 +59,80 @@ struct InicioView: View {
         }
     }
 
-    // MARK: - Contenido principal
+    // MARK: - Contenido
 
     var contenido: some View {
-        List {
-            if buscando {
-                resultadosBusqueda
-            } else {
-                contenidoNormal
+        ScrollView {
+            LazyVStack(spacing: 0, pinnedViews: []) {
+                if buscando {
+                    resultadosBusqueda
+                } else {
+                    contenidoNormal
+                }
             }
         }
-        .listStyle(.insetGrouped)
+        .background(Color(.systemGroupedBackground))
         .animation(.default, value: busqueda)
     }
 
-    // MARK: - Vista normal (sin búsqueda)
+    // MARK: - Sin búsqueda
 
     @ViewBuilder
     var contenidoNormal: some View {
-        // Favoritos como scroll horizontal
+        // Favoritos
         if !competicionesFavoritas.isEmpty {
-            Section {
+            VStack(alignment: .leading, spacing: 10) {
+                sectionLabel("Favoritos", icon: "star.fill", iconColor: .yellow)
+                    .padding(.horizontal, 16)
+
                 ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 12) {
+                    HStack(spacing: 10) {
                         ForEach(competicionesFavoritas) { comp in
                             NavigationLink(destination: LigaView(competicion: comp)) {
                                 LigaCardFavorito(competicion: comp) {
-                                    toggleFavorito(comp.id)
+                                    withAnimation { toggleFavorito(comp.id) }
                                 }
                             }
                             .buttonStyle(.plain)
                         }
                     }
-                    .padding(.horizontal, 2)
-                    .padding(.vertical, 4)
+                    .padding(.horizontal, 16)
+                    .padding(.bottom, 2)
                 }
-                .listRowInsets(EdgeInsets(top: 8, leading: 14, bottom: 8, trailing: 14))
-            } header: {
-                Label("Favoritos", systemImage: "star.fill")
-                    .foregroundColor(.yellow)
             }
+            .padding(.top, 16)
+            .padding(.bottom, 8)
         }
 
-        // Todas las ligas
-        Section {
+        // Ligas
+        VStack(alignment: .leading, spacing: 0) {
+            sectionLabel("Competiciones", icon: "trophy.fill", iconColor: .secondary)
+                .padding(.horizontal, 16)
+                .padding(.top, 16)
+                .padding(.bottom, 8)
+
             if competiciones.isEmpty {
-                HStack {
-                    Spacer()
-                    VStack(spacing: 10) {
-                        Image(systemName: "trophy").font(.largeTitle).foregroundColor(.secondary)
-                        Text("No hay ligas disponibles").foregroundColor(.secondary)
-                    }
-                    .padding()
-                    Spacer()
+                VStack(spacing: 12) {
+                    Image(systemName: "trophy").font(.largeTitle).foregroundColor(.secondary)
+                    Text("No hay ligas disponibles").foregroundColor(.secondary).font(.subheadline)
                 }
+                .frame(maxWidth: .infinity)
+                .padding(40)
             } else {
-                ForEach(competiciones) { comp in
-                    NavigationLink(destination: LigaView(competicion: comp)) {
-                        LigaRowGrande(
-                            competicion: comp,
-                            esFavorito: favoritoIds.contains(comp.id)
-                        )
-                    }
-                    .swipeActions(edge: .trailing, allowsFullSwipe: true) {
-                        Button {
-                            withAnimation { toggleFavorito(comp.id) }
-                        } label: {
-                            Label(
-                                favoritoIds.contains(comp.id) ? "Quitar" : "Favorito",
-                                systemImage: favoritoIds.contains(comp.id) ? "star.slash.fill" : "star.fill"
-                            )
+                VStack(spacing: 0) {
+                    ForEach(competiciones) { comp in
+                        ligaRow(comp)
+                        if comp.id != competiciones.last?.id {
+                            Divider().padding(.leading, 68)
                         }
-                        .tint(.yellow)
                     }
                 }
-            }
-        } header: {
-            Text("Ligas")
-        } footer: {
-            if !competiciones.isEmpty {
-                Text("Desliza a la izquierda para añadir a favoritos")
-                    .font(.caption2)
+                .background(Color(.secondarySystemGroupedBackground))
+                .cornerRadius(14)
+                .padding(.horizontal, 16)
             }
         }
+        .padding(.bottom, 20)
     }
 
     // MARK: - Resultados de búsqueda
@@ -149,54 +140,96 @@ struct InicioView: View {
     @ViewBuilder
     var resultadosBusqueda: some View {
         if competicionesFiltradas.isEmpty && equiposFiltrados.isEmpty {
-            Section {
-                HStack {
-                    Spacer()
-                    VStack(spacing: 12) {
-                        Image(systemName: "magnifyingglass")
-                            .font(.system(size: 36)).foregroundColor(.secondary)
-                        Text("Sin resultados para «\(busqueda)»")
-                            .foregroundColor(.secondary).font(.subheadline)
-                    }
-                    .padding(.vertical, 24)
-                    Spacer()
-                }
+            VStack(spacing: 14) {
+                Image(systemName: "magnifyingglass")
+                    .font(.system(size: 40)).foregroundColor(.secondary.opacity(0.4))
+                Text("Sin resultados para «\(busqueda)»")
+                    .foregroundColor(.secondary).font(.subheadline)
             }
+            .frame(maxWidth: .infinity)
+            .padding(60)
         } else {
-            if !competicionesFiltradas.isEmpty {
-                Section("Ligas") {
-                    ForEach(competicionesFiltradas) { comp in
-                        NavigationLink(destination: LigaView(competicion: comp)) {
-                            LigaRowGrande(competicion: comp, esFavorito: favoritoIds.contains(comp.id))
-                        }
-                        .swipeActions(edge: .trailing, allowsFullSwipe: true) {
-                            Button {
-                                withAnimation { toggleFavorito(comp.id) }
-                            } label: {
-                                Label(
-                                    favoritoIds.contains(comp.id) ? "Quitar" : "Favorito",
-                                    systemImage: favoritoIds.contains(comp.id) ? "star.slash.fill" : "star.fill"
-                                )
+            VStack(spacing: 0) {
+                if !competicionesFiltradas.isEmpty {
+                    sectionLabel("Ligas", icon: "trophy.fill", iconColor: .secondary)
+                        .padding(.horizontal, 16).padding(.top, 16).padding(.bottom, 8)
+
+                    VStack(spacing: 0) {
+                        ForEach(competicionesFiltradas) { comp in
+                            ligaRow(comp)
+                            if comp.id != competicionesFiltradas.last?.id {
+                                Divider().padding(.leading, 68)
                             }
-                            .tint(.yellow)
                         }
                     }
+                    .background(Color(.secondarySystemGroupedBackground))
+                    .cornerRadius(14)
+                    .padding(.horizontal, 16)
                 }
-            }
-            if !equiposFiltrados.isEmpty {
-                Section("Equipos") {
-                    ForEach(equiposFiltrados) { equipo in
-                        NavigationLink(destination: EquipoDetalleView(equipo: equipo)) {
-                            HStack(spacing: 14) {
-                                InicialCircle(nombre: equipo.nombre, color: .blue, size: 42)
-                                Text(equipo.nombre)
-                                    .font(.subheadline).fontWeight(.medium)
+
+                if !equiposFiltrados.isEmpty {
+                    sectionLabel("Equipos", icon: "person.3.fill", iconColor: .secondary)
+                        .padding(.horizontal, 16).padding(.top, 20).padding(.bottom, 8)
+
+                    VStack(spacing: 0) {
+                        ForEach(equiposFiltrados) { equipo in
+                            NavigationLink(destination: EquipoDetalleView(equipo: equipo)) {
+                                HStack(spacing: 12) {
+                                    InicialCircle(nombre: equipo.nombre, color: .blue, size: 40)
+                                    Text(equipo.nombre)
+                                        .font(.subheadline).fontWeight(.medium)
+                                        .foregroundColor(.primary)
+                                        .lineLimit(1)
+                                    Spacer()
+                                    Image(systemName: "chevron.right")
+                                        .font(.caption2).foregroundColor(.secondary)
+                                }
+                                .padding(.horizontal, 16).padding(.vertical, 12)
                             }
-                            .padding(.vertical, 2)
+                            if equipo.id != equiposFiltrados.last?.id {
+                                Divider().padding(.leading, 68)
+                            }
                         }
                     }
+                    .background(Color(.secondarySystemGroupedBackground))
+                    .cornerRadius(14)
+                    .padding(.horizontal, 16)
                 }
             }
+            .padding(.bottom, 20)
+        }
+    }
+
+    // MARK: - Fila de liga con swipe
+
+    @ViewBuilder
+    func ligaRow(_ comp: Competicion) -> some View {
+        NavigationLink(destination: LigaView(competicion: comp)) {
+            LigaRowGrande(competicion: comp, esFavorito: favoritoIds.contains(comp.id))
+        }
+        .contextMenu {
+            Button {
+                withAnimation { toggleFavorito(comp.id) }
+            } label: {
+                Label(
+                    favoritoIds.contains(comp.id) ? "Quitar de favoritos" : "Añadir a favoritos",
+                    systemImage: favoritoIds.contains(comp.id) ? "star.slash" : "star"
+                )
+            }
+        }
+    }
+
+    // MARK: - Helper
+
+    func sectionLabel(_ texto: String, icon: String, iconColor: Color) -> some View {
+        HStack(spacing: 6) {
+            Image(systemName: icon)
+                .font(.system(size: 11, weight: .semibold))
+                .foregroundColor(iconColor)
+            Text(texto.uppercased())
+                .font(.system(size: 12, weight: .bold))
+                .foregroundColor(.secondary)
+                .kerning(0.5)
         }
     }
 
@@ -222,60 +255,65 @@ struct InicioView: View {
     }
 }
 
-// MARK: - Componentes
+// MARK: - LigaRowGrande
 
 struct LigaRowGrande: View {
     let competicion: Competicion
     let esFavorito: Bool
 
-    // Color de acento por categoría (extensible)
     var accentColor: Color {
-        let nombre = competicion.nombre.lowercased()
-        if nombre.contains("tercera") { return .blue }
-        if nombre.contains("segunda") { return .orange }
-        if nombre.contains("primera") { return .green }
+        let n = competicion.nombre.lowercased()
+        if n.contains("tercera") { return .blue }
+        if n.contains("segunda") { return .orange }
+        if n.contains("primera") { return .green }
         return .purple
+    }
+
+    var subtitulo: String {
+        var partes: [String] = []
+        if let g = competicion.grupo { partes.append(g) }
+        partes.append(competicion.temporada)
+        return partes.joined(separator: " · ")
     }
 
     var body: some View {
         HStack(spacing: 14) {
-            // Icono de competición
             ZStack {
-                RoundedRectangle(cornerRadius: 12)
-                    .fill(accentColor.opacity(0.12))
-                    .frame(width: 52, height: 52)
+                RoundedRectangle(cornerRadius: 10)
+                    .fill(accentColor.opacity(0.1))
+                    .frame(width: 40, height: 40)
                 Image(systemName: "trophy.fill")
-                    .font(.title2)
+                    .font(.system(size: 17))
                     .foregroundColor(accentColor)
             }
 
-            // Info
-            VStack(alignment: .leading, spacing: 5) {
+            VStack(alignment: .leading, spacing: 3) {
                 Text(competicion.nombre)
                     .font(.subheadline).fontWeight(.semibold)
-                    .foregroundColor(.primary).lineLimit(2)
-
-                HStack(spacing: 6) {
-                    if let grupo = competicion.grupo {
-                        Label("Grupo \(grupo)", systemImage: "square.grid.2x2")
-                            .font(.caption2).foregroundColor(.secondary)
-                        Text("·").font(.caption2).foregroundColor(.secondary)
-                    }
-                    Label(competicion.temporada, systemImage: "calendar")
-                        .font(.caption2).foregroundColor(.secondary)
-                }
+                    .foregroundColor(.primary)
+                    .lineLimit(1)
+                Text(subtitulo)
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                    .lineLimit(1)
             }
 
             Spacer()
 
             if esFavorito {
                 Image(systemName: "star.fill")
-                    .font(.caption).foregroundColor(.yellow)
+                    .font(.caption2).foregroundColor(.yellow)
             }
+
+            Image(systemName: "chevron.right")
+                .font(.caption2).foregroundColor(.secondary.opacity(0.5))
         }
-        .padding(.vertical, 6)
+        .padding(.horizontal, 16)
+        .padding(.vertical, 12)
     }
 }
+
+// MARK: - LigaCardFavorito
 
 struct LigaCardFavorito: View {
     let competicion: Competicion
@@ -291,10 +329,9 @@ struct LigaCardFavorito: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            // Franja de color
             accentColor.frame(height: 3)
 
-            VStack(alignment: .leading, spacing: 8) {
+            VStack(alignment: .leading, spacing: 0) {
                 HStack(alignment: .top) {
                     Image(systemName: "trophy.fill")
                         .font(.footnote).foregroundColor(accentColor)
@@ -311,10 +348,12 @@ struct LigaCardFavorito: View {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(competicion.nombre)
                         .font(.caption).fontWeight(.semibold)
-                        .foregroundColor(.primary).lineLimit(2)
+                        .foregroundColor(.primary)
+                        .lineLimit(2)
                     if let grupo = competicion.grupo {
-                        Text("Gr. \(grupo)")
+                        Text(grupo)
                             .font(.caption2).foregroundColor(.secondary)
+                            .lineLimit(1)
                     }
                     Text(competicion.temporada)
                         .font(.caption2).foregroundColor(.secondary)
@@ -325,42 +364,11 @@ struct LigaCardFavorito: View {
         .frame(width: 148, height: 108)
         .background(Color(.secondarySystemGroupedBackground))
         .clipShape(RoundedRectangle(cornerRadius: 12))
-        .shadow(color: .black.opacity(0.05), radius: 4, x: 0, y: 2)
+        .shadow(color: .black.opacity(0.06), radius: 5, x: 0, y: 2)
     }
 }
 
-struct CompeticionRow: View {
-    let competicion: Competicion
-    let esFavorito: Bool
-
-    var body: some View {
-        HStack(spacing: 14) {
-            ZStack {
-                RoundedRectangle(cornerRadius: 10)
-                    .fill(Color.blue.opacity(0.1))
-                    .frame(width: 46, height: 46)
-                Image(systemName: "trophy.fill")
-                    .font(.title3).foregroundColor(.blue)
-            }
-            VStack(alignment: .leading, spacing: 4) {
-                Text(competicion.nombre)
-                    .font(.subheadline).fontWeight(.semibold).lineLimit(1)
-                HStack(spacing: 6) {
-                    if let grupo = competicion.grupo {
-                        Text("Grupo \(grupo)").font(.caption).foregroundColor(.secondary)
-                        Text("·").font(.caption).foregroundColor(.secondary)
-                    }
-                    Text(competicion.temporada).font(.caption).foregroundColor(.secondary)
-                }
-            }
-            Spacer()
-            if esFavorito {
-                Image(systemName: "star.fill").font(.caption).foregroundColor(.yellow)
-            }
-        }
-        .padding(.vertical, 4)
-    }
-}
+// MARK: - InicialCircle
 
 struct InicialCircle: View {
     let nombre: String

@@ -35,7 +35,7 @@ struct MiEquipoView: View {
             Spacer()
             ZStack {
                 Circle()
-                    .fill(Color.blue.opacity(0.08))
+                    .fill(Color.brand.opacity(0.08))
                     .frame(width: 120, height: 120)
                 Image(systemName: "sportscourt.fill")
                     .font(.system(size: 52))
@@ -56,7 +56,7 @@ struct MiEquipoView: View {
                     .font(.headline)
                     .frame(maxWidth: .infinity)
                     .padding()
-                    .background(Color.blue)
+                    .background(Color.brand)
                     .foregroundColor(.white)
                     .cornerRadius(14)
                     .padding(.horizontal, 40)
@@ -87,7 +87,7 @@ struct SelectorEquipoSheet: View {
                     onSelect(equipo)
                 } label: {
                     HStack(spacing: 14) {
-                        InicialCircle(nombre: equipo.nombre, color: .blue, size: 40)
+                        InicialCircle(nombre: equipo.nombre, color: .brand, size: 40)
                         Text(equipo.nombre)
                             .font(.subheadline).fontWeight(.medium)
                             .foregroundColor(.primary)
@@ -217,7 +217,7 @@ struct MiEquipoDashboard: View {
 
     func cabeceraView(eq: Equipo) -> some View {
         ZStack {
-            Color(red: 0.06, green: 0.06, blue: 0.09)
+            Color.brandDark
 
             VStack(spacing: 14) {
                 ZStack {
@@ -248,10 +248,10 @@ struct MiEquipoDashboard: View {
 
     func statsRapidas(fila: FilaClasificacion) -> some View {
         HStack(spacing: 8) {
-            statPill(valor: "\(fila.pts)", etiqueta: "Pts", color: .blue)
-            statPill(valor: "\(fila.pg)", etiqueta: "PG", color: .green)
-            statPill(valor: "\(fila.pe)", etiqueta: "PE", color: .orange)
-            statPill(valor: "\(fila.pp)", etiqueta: "PP", color: .red)
+            statPill(valor: "\(fila.pts)", etiqueta: "Pts", color: .brand)
+            statPill(valor: "\(fila.pg)", etiqueta: "PG", color: .win)
+            statPill(valor: "\(fila.pe)", etiqueta: "PE", color: .draw)
+            statPill(valor: "\(fila.pp)", etiqueta: "PP", color: .loss)
             statPill(valor: fila.dg >= 0 ? "+\(fila.dg)" : "\(fila.dg)", etiqueta: "GD", color: .secondary)
         }
     }
@@ -280,7 +280,7 @@ struct MiEquipoDashboard: View {
                     .font(.system(size: 11, weight: .bold)).foregroundColor(.secondary).kerning(1)
                 Spacer()
                 NavigationLink(destination: EquipoDetalleView(equipo: equipo!)) {
-                    Text("Ver todo").font(.caption).foregroundColor(.blue)
+                    Text("Ver todo").font(.caption).foregroundColor(.brand)
                 }
             }
             .padding(.horizontal, 16).padding(.top, 14).padding(.bottom, 10)
@@ -307,7 +307,7 @@ struct MiEquipoDashboard: View {
         let golesEq = esLocal ? partido.golesLocal : partido.golesVisitante
         let golesRiv = esLocal ? partido.golesVisitante : partido.golesLocal
         let rival = equiposMap[esLocal ? partido.equipoVisitanteId : partido.equipoLocalId]?.nombre ?? "—"
-        let (letra, acento): (String, Color) = golesEq > golesRiv ? ("V", .green) : golesEq < golesRiv ? ("D", .red) : ("E", .orange)
+        let (letra, acento): (String, Color) = golesEq > golesRiv ? ("V", Color.win) : golesEq < golesRiv ? ("D", Color.loss) : ("E", Color.draw)
 
         return AnyView(
             VStack(spacing: 0) {
@@ -367,11 +367,11 @@ struct MiEquipoDashboard: View {
                 let esPropia = fila.id == equipo?.id
                 ClasificacionRow(posicion: i + 1, fila: fila, total: clasificacion.count)
                     .padding(.horizontal, 12).padding(.vertical, 2)
-                    .background(esPropia ? Color.blue.opacity(0.08) : Color(.secondarySystemGroupedBackground))
+                    .background(esPropia ? Color.brand.opacity(0.08) : Color(.secondarySystemGroupedBackground))
                     .overlay(
                         esPropia ?
                         RoundedRectangle(cornerRadius: 0)
-                            .stroke(Color.blue.opacity(0.3), lineWidth: 1) : nil
+                            .stroke(Color.brand.opacity(0.3), lineWidth: 1) : nil
                     )
                 if i < clasificacion.count - 1 {
                     Divider().padding(.leading, 12)

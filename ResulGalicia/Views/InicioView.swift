@@ -175,7 +175,7 @@ struct InicioView: View {
                         ForEach(equiposFiltrados) { equipo in
                             NavigationLink(destination: EquipoDetalleView(equipo: equipo)) {
                                 HStack(spacing: 12) {
-                                    InicialCircle(nombre: equipo.nombre, color: .blue, size: 40)
+                                    InicialCircle(nombre: equipo.nombre, color: .brand, size: 40)
                                     Text(equipo.nombre)
                                         .font(.subheadline).fontWeight(.medium)
                                         .foregroundColor(.primary)
@@ -263,10 +263,10 @@ struct LigaRowGrande: View {
 
     var accentColor: Color {
         let n = competicion.nombre.lowercased()
-        if n.contains("tercera") { return .blue }
+        if n.contains("tercera") { return .brand }
         if n.contains("segunda") { return .orange }
         if n.contains("primera") { return .green }
-        return .purple
+        return .brand
     }
 
     var subtitulo: String {
@@ -321,10 +321,10 @@ struct LigaCardFavorito: View {
 
     var accentColor: Color {
         let n = competicion.nombre.lowercased()
-        if n.contains("tercera") { return .blue }
+        if n.contains("tercera") { return .brand }
         if n.contains("segunda") { return .orange }
         if n.contains("primera") { return .green }
-        return .purple
+        return .brand
     }
 
     var body: some View {

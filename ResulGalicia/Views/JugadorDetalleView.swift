@@ -35,9 +35,9 @@ struct JugadorDetalleView: View {
             let golesEq = esLocal ? partido.golesLocal : partido.golesVisitante
             let golesOp = esLocal ? partido.golesVisitante : partido.golesLocal
             let letra: String; let color: Color
-            if golesEq > golesOp { letra = "V"; color = .green }
-            else if golesEq < golesOp { letra = "D"; color = .red }
-            else { letra = "E"; color = .orange }
+            if golesEq > golesOp { letra = "V"; color = .win }
+            else if golesEq < golesOp { letra = "D"; color = .loss }
+            else { letra = "E"; color = .draw }
             let oponenteId = esLocal ? partido.equipoVisitanteId : partido.equipoLocalId
             return JornadaResumen(
                 id: ali.partidoId,
@@ -104,7 +104,7 @@ struct JugadorDetalleView: View {
 
     var cabeceraView: some View {
         ZStack {
-            Color(red: 0.06, green: 0.06, blue: 0.09)
+            Color.brandDark
             VStack(spacing: 12) {
                 ZStack {
                     RoundedRectangle(cornerRadius: 18)
@@ -159,11 +159,11 @@ struct JugadorDetalleView: View {
             // Leyenda
             HStack(spacing: 16) {
                 HStack(spacing: 4) {
-                    RoundedRectangle(cornerRadius: 2).fill(Color.blue.opacity(0.7)).frame(width: 12, height: 12)
+                    RoundedRectangle(cornerRadius: 2).fill(Color.brand.opacity(0.8)).frame(width: 12, height: 12)
                     Text("Titular").font(.caption2).foregroundColor(.secondary)
                 }
                 HStack(spacing: 4) {
-                    RoundedRectangle(cornerRadius: 2).fill(Color.blue.opacity(0.3)).frame(width: 12, height: 12)
+                    RoundedRectangle(cornerRadius: 2).fill(Color.brand.opacity(0.35)).frame(width: 12, height: 12)
                     Text("Suplente").font(.caption2).foregroundColor(.secondary)
                 }
                 HStack(spacing: 4) {
@@ -227,11 +227,11 @@ struct JugadorDetalleView: View {
 
             // Badge resultado
             Text(j.resultadoLetra)
-                .font(.system(size: 9, weight: .bold))
+                .font(.system(size: 9, weight: .black))
                 .foregroundColor(.white)
-                .frame(width: 16, height: 16)
+                .padding(.horizontal, 5).padding(.vertical, 2)
                 .background(j.resultadoColor)
-                .cornerRadius(3)
+                .clipShape(Capsule())
         }
         .frame(width: 34)
     }

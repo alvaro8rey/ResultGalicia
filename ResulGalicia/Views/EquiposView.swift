@@ -17,7 +17,7 @@ struct EquiposView: View {
                     List(equipos) { equipo in
                         NavigationLink(destination: EquipoDetalleView(equipo: equipo)) {
                             HStack(spacing: 14) {
-                                InicialCircle(nombre: equipo.nombre, color: .blue, size: 44)
+                                InicialCircle(nombre: equipo.nombre, color: .brand, size: 44)
                                 Text(equipo.nombre)
                                     .font(.subheadline)
                                     .fontWeight(.medium)
@@ -117,7 +117,7 @@ struct EquipoDetalleView: View {
             VStack(spacing: 14) {
                 // Cabecera
                 ZStack {
-                    Color(red: 0.06, green: 0.06, blue: 0.09)
+                    Color.brandDark
                     VStack(spacing: 12) {
                         ZStack {
                             RoundedRectangle(cornerRadius: 18)
@@ -182,7 +182,7 @@ struct EquipoDetalleView: View {
                                 let esPropia = fila.id == equipo.id
                                 ClasificacionRow(posicion: i + 1, fila: fila, total: clasificacion.count)
                                     .padding(.horizontal, 12).padding(.vertical, 2)
-                                    .background(esPropia ? Color.blue.opacity(0.08) : Color(.secondarySystemGroupedBackground))
+                                    .background(esPropia ? Color.brand.opacity(0.08) : Color(.secondarySystemGroupedBackground))
                                 if i < clasificacion.count - 1 {
                                     Divider().padding(.leading, 12)
                                 }
@@ -338,12 +338,14 @@ struct EquipoDetalleView: View {
         let gano = (partido.equipoLocalId == equipo.id && partido.golesLocal > partido.golesVisitante) ||
                    (partido.equipoVisitanteId == equipo.id && partido.golesVisitante > partido.golesLocal)
         let empato = partido.golesLocal == partido.golesVisitante
-        let color: Color = gano ? .green : empato ? .orange : .red
+        let color: Color = gano ? .win : empato ? .draw : .loss
         let letra = gano ? "V" : empato ? "E" : "D"
         return Text(letra)
-            .font(.caption2).fontWeight(.bold).foregroundColor(.white)
-            .frame(width: 20, height: 20)
-            .background(color).cornerRadius(5)
+            .font(.system(size: 10, weight: .black))
+            .foregroundColor(.white)
+            .padding(.horizontal, 6).padding(.vertical, 3)
+            .background(color)
+            .clipShape(Capsule())
     }
 
     func cargar() async {

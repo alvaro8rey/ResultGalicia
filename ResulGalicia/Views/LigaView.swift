@@ -254,30 +254,42 @@ struct ClasificacionRow: View {
     let total: Int
 
     var posicionColor: Color {
-        if posicion <= 2 { return .green }
-        if posicion >= total - 1 { return .red }
-        return .primary
+        if posicion <= 2 { return .win }
+        if posicion >= total - 1 { return .loss }
+        return .secondary
     }
 
     var body: some View {
-        HStack {
-            ZStack {
-                if posicion <= 2 {
-                    Circle().fill(Color.green.opacity(0.12)).frame(width: 26, height: 26)
-                } else if posicion >= total - 1 {
-                    Circle().fill(Color.red.opacity(0.12)).frame(width: 26, height: 26)
-                }
-                Text("\(posicion)").font(.caption).fontWeight(.semibold).foregroundColor(posicionColor)
-            }
-            .frame(width: 24)
+        HStack(spacing: 0) {
+            // Indicador lateral de posición
+            Rectangle()
+                .fill(posicion <= 2 ? Color.win : posicion >= total - 1 ? Color.loss : Color.clear)
+                .frame(width: 3)
+                .padding(.vertical, 4)
 
-            Text(fila.nombre).font(.subheadline).lineLimit(1).frame(maxWidth: .infinity, alignment: .leading)
-            Text("\(fila.pj)").frame(width: 26).font(.caption).foregroundColor(.secondary)
-            Text("\(fila.pg)").frame(width: 26).font(.caption).foregroundColor(.secondary)
-            Text("\(fila.pe)").frame(width: 26).font(.caption).foregroundColor(.secondary)
-            Text("\(fila.pp)").frame(width: 26).font(.caption).foregroundColor(.secondary)
-            Text(fila.dg >= 0 ? "+\(fila.dg)" : "\(fila.dg)").frame(width: 30).font(.caption).foregroundColor(.secondary)
-            Text("\(fila.pts)").frame(width: 30).font(.subheadline).fontWeight(.bold)
+            HStack {
+                Text("\(posicion)")
+                    .font(.system(size: 12, weight: .bold))
+                    .foregroundColor(posicionColor)
+                    .frame(width: 24)
+
+                Text(fila.nombre)
+                    .font(.system(size: 14, weight: posicion <= 2 ? .semibold : .regular))
+                    .lineLimit(1)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+
+                Text("\(fila.pj)").frame(width: 26).font(.caption).foregroundColor(.secondary)
+                Text("\(fila.pg)").frame(width: 26).font(.caption).foregroundColor(.secondary)
+                Text("\(fila.pe)").frame(width: 26).font(.caption).foregroundColor(.secondary)
+                Text("\(fila.pp)").frame(width: 26).font(.caption).foregroundColor(.secondary)
+                Text(fila.dg >= 0 ? "+\(fila.dg)" : "\(fila.dg)").frame(width: 30).font(.caption).foregroundColor(.secondary)
+                Text("\(fila.pts)")
+                    .frame(width: 30)
+                    .font(.system(size: 14, weight: .bold))
+                    .foregroundColor(posicion <= 2 ? .win : .primary)
+            }
+            .padding(.horizontal, 10)
+            .padding(.vertical, 10)
         }
     }
 }
@@ -320,8 +332,8 @@ struct JornadaChip: View {
             Text(label)
                 .font(.system(size: 13, weight: seleccionada ? .semibold : .regular))
                 .padding(.horizontal, 16).padding(.vertical, 8)
-                .background(seleccionada ? Color.primary : Color(.systemGray5))
-                .foregroundColor(seleccionada ? Color(.systemBackground) : .secondary)
+                .background(seleccionada ? Color.brand : Color(.systemGray5))
+                .foregroundColor(seleccionada ? .white : .secondary)
                 .cornerRadius(20)
         }
     }

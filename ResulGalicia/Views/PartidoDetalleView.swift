@@ -103,7 +103,7 @@ struct PartidoDetalleView: View {
 
     var marcadorView: some View {
         ZStack {
-            Color(red: 0.06, green: 0.06, blue: 0.09)
+            Color.brandDark
 
             VStack(spacing: 0) {
                 // Estado
@@ -433,7 +433,7 @@ struct EventoTimeline: View {
         case .sustitucion:
             Image(systemName: "arrow.up.arrow.down")
                 .font(.system(size: 11, weight: .semibold))
-                .foregroundColor(.blue)
+                .foregroundColor(.brand)
         }
     }
 

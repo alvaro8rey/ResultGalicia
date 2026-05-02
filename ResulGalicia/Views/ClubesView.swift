@@ -33,19 +33,17 @@ struct ClubesView: View {
     }
 
     var body: some View {
-        NavigationStack {
-            Group {
-                if cargando {
-                    ProgressView()
-                } else if let msg = errorMsg {
-                    ErrorStateView(mensaje: msg) { Task { await cargar() } }
-                } else {
-                    contenido
-                }
+        Group {
+            if cargando {
+                ProgressView()
+            } else if let msg = errorMsg {
+                ErrorStateView(mensaje: msg) { Task { await cargar() } }
+            } else {
+                contenido
             }
-            .navigationTitle("Clubes")
-            .task { await cargar() }
         }
+        .navigationTitle("Clubes")
+        .task { await cargar() }
     }
 
     var contenido: some View {

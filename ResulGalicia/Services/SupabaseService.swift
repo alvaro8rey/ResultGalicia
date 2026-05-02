@@ -244,4 +244,11 @@ class SupabaseService: ObservableObject {
             .execute()
             .value
     }
+
+    func fetchEquipoIdsEnCompeticion(competicionId: UUID) async throws -> Set<UUID> {
+        let partidos = try await fetchPartidos(competicionId: competicionId)
+        var ids = Set<UUID>()
+        for p in partidos { ids.insert(p.equipoLocalId); ids.insert(p.equipoVisitanteId) }
+        return ids
+    }
 }

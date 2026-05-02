@@ -1,181 +1,324 @@
 import SwiftUI
 
+// MARK: - Hub principal del Buscador
+
 struct BuscadorView: View {
     @EnvironmentObject var service: SupabaseService
-    @State private var clubes: [Club] = []
-    @State private var jugadores: [Jugador] = []
-    @State private var busqueda = ""
-    @State private var cargando = true
-
-    var clubesFiltrados: [Club] {
-        guard busqueda.count >= 2 else { return [] }
-        let q = busqueda.lowercased()
-        return clubes.filter {
-            $0.nombre.lowercased().contains(q) ||
-            ($0.localidad?.lowercased().contains(q) ?? false)
-        }
-    }
-
-    var jugadoresFiltrados: [Jugador] {
-        guard busqueda.count >= 2 else { return [] }
-        let q = busqueda.lowercased()
-        return jugadores.filter { $0.nombre.lowercased().contains(q) }
-    }
-
-    var hayResultados: Bool { !clubesFiltrados.isEmpty || !jugadoresFiltrados.isEmpty }
 
     var body: some View {
         NavigationStack {
-            Group {
-                if cargando {
-                    ProgressView()
-                } else {
-                    contenido
+            ScrollView {
+                VStack(spacing: 14) {
+                    NavigationLink(destination: ClubesView().environmentObject(service)) {
+                        HubCard(
+                            icono: "building.2.fill",
+                            titulo: "Clubes",
+                            subtitulo: "Busca por nombre, provincia, delegación, localidad..."
+                        )
+                    }
+                    NavigationLink(destination: EquiposSearchView().environmentObject(service)) {
+                        HubCard(
+                            icono: "person.3.fill",
+                            titulo: "Equipos",
+                            subtitulo: "Busca por nombre, competición y grupo..."
+                        )
+                    }
                 }
+                .padding(.horizontal, 16)
+                .padding(.top, 14)
             }
+            .background(Color(.systemGroupedBackground))
             .navigationTitle("Buscador")
-            .searchable(
-                text: $busqueda,
-                placement: .navigationBarDrawer(displayMode: .always),
-                prompt: "Clubes, jugadores..."
-            )
-            .task { await cargar() }
         }
     }
+}
 
-    // MARK: - Contenido
+struct HubCard: View {
+    let icono: String
+    let titulo: String
+    let subtitulo: String
+
+    var body: some View {
+        HStack(spacing: 16) {
+            ZStack {
+                RoundedRectangle(cornerRadius: 12)
+                    .fill(Color.brand.opacity(0.10))
+                    .frame(width: 54, height: 54)
+                Image(systemName: icono)
+                    .font(.system(size: 22))
+                    .foregroundColor(.brand)
+            }
+            VStack(alignment: .leading, spacing: 3) {
+                Text(titulo)
+                    .font(.headline).foregroundColor(.primary)
+                Text(subtitulo)
+                    .font(.caption).foregroundColor(.secondary)
+                    .lineLimit(2)
+            }
+            Spacer()
+            Image(systemName: "chevron.right")
+                .font(.caption).foregroundColor(.secondary.opacity(0.4))
+        }
+        .padding(16)
+        .background(Color(.secondarySystemGroupedBackground))
+        .cornerRadius(14)
+    }
+}
+
+// MARK: - Buscador de equipos con filtros
+
+struct EquiposSearchView: View {
+    @EnvironmentObject var service: SupabaseService
+    @State private var todosEquipos: [Equipo] = []
+    @State private var competiciones: [Competicion] = []
+    @State private var cargando = true
+
+    @State private var filtroNombre      = ""
+    @State private var filtroCompeticion: Competicion? = nil
+
+    @State private var resultados: [Equipo] = []
+    @State private var buscando = false
+    @State private var haBuscado = false
+
+    var hayFiltros: Bool {
+        !filtroNombre.isEmpty || filtroCompeticion != nil
+    }
+
+    var body: some View {
+        Group {
+            if cargando {
+                ProgressView()
+            } else {
+                contenido
+            }
+        }
+        .navigationTitle("Equipos")
+        .task { await cargar() }
+    }
 
     var contenido: some View {
         ScrollView {
-            if busqueda.count < 2 {
-                estadoVacio
-            } else if !hayResultados {
-                sinResultados
-            } else {
-                resultados
+            VStack(spacing: 0) {
+                filtrosCard
+                    .padding(.horizontal, 16)
+                    .padding(.top, 14)
+
+                resultadosSection
+                    .padding(.top, 14)
             }
+            .padding(.bottom, 20)
         }
         .background(Color(.systemGroupedBackground))
-        .animation(.default, value: busqueda)
+        .scrollDismissesKeyboard(.immediately)
+        .onTapGesture { ocultarTeclado() }
     }
 
-    var estadoVacio: some View {
-        VStack(spacing: 20) {
-            ZStack {
-                Circle().fill(Color.brand.opacity(0.08)).frame(width: 100, height: 100)
-                Image(systemName: "magnifyingglass")
-                    .font(.system(size: 40, weight: .light))
-                    .foregroundColor(.brand.opacity(0.5))
+    // MARK: - Filtros
+
+    var filtrosCard: some View {
+        VStack(spacing: 0) {
+            campoTexto(label: "Nombre", placeholder: "Nombre del equipo", texto: $filtroNombre)
+            Divider().padding(.leading, 16)
+
+            campoPicker(
+                label: "Competición",
+                valor: filtroCompeticion.map { nombreCompeticion($0) } ?? "Todas",
+                seleccionado: $filtroCompeticion
+            )
+
+            Divider()
+            HStack(spacing: 10) {
+                if hayFiltros || haBuscado {
+                    Button { limpiar() } label: {
+                        Text("Limpiar")
+                            .font(.subheadline).fontWeight(.medium)
+                            .foregroundColor(.secondary)
+                            .padding(.horizontal, 16).padding(.vertical, 9)
+                            .background(Color(.systemGroupedBackground))
+                            .cornerRadius(10)
+                    }
+                }
+                Spacer()
+                if hayFiltros {
+                    Button {
+                        Task { await buscar() }
+                    } label: {
+                        Group {
+                            if buscando {
+                                ProgressView().tint(.white)
+                                    .padding(.horizontal, 24).padding(.vertical, 9)
+                            } else {
+                                Label("Buscar", systemImage: "magnifyingglass")
+                                    .font(.subheadline).fontWeight(.semibold)
+                                    .foregroundColor(.white)
+                                    .padding(.horizontal, 18).padding(.vertical, 9)
+                            }
+                        }
+                        .background(Color.brand)
+                        .cornerRadius(10)
+                    }
+                    .disabled(buscando)
+                }
             }
-            VStack(spacing: 8) {
-                Text("Busca clubes y jugadores")
-                    .font(.title3).fontWeight(.semibold)
-                Text("Escribe al menos 2 letras para buscar en toda la base de datos.")
-                    .font(.subheadline).foregroundColor(.secondary)
-                    .multilineTextAlignment(.center)
-                    .padding(.horizontal, 40)
+            .padding(.horizontal, 16).padding(.vertical, 10)
+        }
+        .background(Color(.secondarySystemGroupedBackground))
+        .cornerRadius(14)
+    }
+
+    func campoTexto(label: String, placeholder: String, texto: Binding<String>) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(label)
+                .font(.caption).foregroundColor(.secondary).fontWeight(.medium)
+            TextField(placeholder, text: texto)
+                .font(.subheadline)
+        }
+        .padding(.horizontal, 16).padding(.vertical, 11)
+    }
+
+    func campoPicker(label: String, valor: String, seleccionado: Binding<Competicion?>) -> some View {
+        HStack {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(label)
+                    .font(.caption).foregroundColor(.secondary).fontWeight(.medium)
+                Menu {
+                    Button("Todas") { seleccionado.wrappedValue = nil }
+                    Divider()
+                    ForEach(competiciones) { comp in
+                        Button(nombreCompeticion(comp)) { seleccionado.wrappedValue = comp }
+                    }
+                } label: {
+                    HStack(spacing: 4) {
+                        Text(valor)
+                            .font(.subheadline)
+                            .foregroundColor(seleccionado.wrappedValue == nil ? .secondary : .primary)
+                            .lineLimit(1)
+                        Image(systemName: "chevron.up.chevron.down")
+                            .font(.system(size: 10))
+                            .foregroundColor(.secondary)
+                    }
+                }
             }
+            Spacer()
         }
-        .frame(maxWidth: .infinity)
-        .padding(.top, 80)
+        .padding(.horizontal, 16).padding(.vertical, 11)
     }
 
-    var sinResultados: some View {
-        VStack(spacing: 12) {
-            Image(systemName: "magnifyingglass")
-                .font(.system(size: 38)).foregroundColor(.secondary.opacity(0.35))
-            Text("Sin resultados para «\(busqueda)»")
-                .font(.subheadline).foregroundColor(.secondary)
-        }
-        .frame(maxWidth: .infinity)
-        .padding(.top, 80)
+    func nombreCompeticion(_ comp: Competicion) -> String {
+        var partes = [comp.nombre]
+        if let g = comp.grupo { partes.append(g) }
+        partes.append(comp.temporada)
+        return partes.joined(separator: " · ")
     }
 
-    var resultados: some View {
-        LazyVStack(spacing: 0, pinnedViews: []) {
-            if !clubesFiltrados.isEmpty {
-                seccionLabel("Clubes")
-                VStack(spacing: 0) {
-                    ForEach(clubesFiltrados.prefix(15)) { club in
-                        NavigationLink(destination: ClubDetalleView(club: club)) {
-                            HStack(spacing: 14) {
-                                EscudoView(url: club.escudoUrl, size: 40)
-                                VStack(alignment: .leading, spacing: 2) {
-                                    Text(club.nombre)
-                                        .font(.subheadline).fontWeight(.semibold)
+    // MARK: - Resultados
+
+    var resultadosSection: some View {
+        VStack(spacing: 0) {
+            if !haBuscado {
+                VStack(spacing: 12) {
+                    Image(systemName: "person.3")
+                        .font(.system(size: 38)).foregroundColor(.secondary.opacity(0.3))
+                    Text("Usa los filtros y pulsa Buscar")
+                        .font(.subheadline).foregroundColor(.secondary)
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.top, 60)
+            } else if resultados.isEmpty {
+                VStack(spacing: 12) {
+                    Image(systemName: "person.3")
+                        .font(.system(size: 38)).foregroundColor(.secondary.opacity(0.3))
+                    Text("Sin equipos con esos filtros")
+                        .font(.subheadline).foregroundColor(.secondary)
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.top, 60)
+            } else {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("\(resultados.count) \(resultados.count == 1 ? "equipo encontrado" : "equipos encontrados")")
+                        .font(.caption).fontWeight(.semibold)
+                        .foregroundColor(.secondary)
+                        .padding(.horizontal, 16)
+
+                    VStack(spacing: 0) {
+                        ForEach(resultados) { equipo in
+                            NavigationLink(destination: EquipoDetalleView(equipo: equipo)) {
+                                HStack(spacing: 14) {
+                                    EscudoView(url: service.escudoUrl(equipo: equipo), size: 40)
+                                    Text(equipo.nombre)
+                                        .font(.subheadline).fontWeight(.medium)
                                         .foregroundColor(.primary).lineLimit(1)
-                                    if let loc = club.localidad {
-                                        Text([loc, club.provincia].compactMap { $0 }.joined(separator: " · "))
-                                            .font(.caption).foregroundColor(.secondary).lineLimit(1)
-                                    }
+                                    Spacer()
+                                    Image(systemName: "chevron.right")
+                                        .font(.caption2).foregroundColor(.secondary.opacity(0.5))
                                 }
-                                Spacer()
-                                Image(systemName: "chevron.right").font(.caption2).foregroundColor(.secondary.opacity(0.5))
+                                .padding(.horizontal, 16).padding(.vertical, 11)
                             }
-                            .padding(.horizontal, 16).padding(.vertical, 11)
-                        }
-                        if club.id != clubesFiltrados.prefix(15).last?.id {
-                            Divider().padding(.leading, 70)
+                            if equipo.id != resultados.last?.id {
+                                Divider().padding(.leading, 70)
+                            }
                         }
                     }
+                    .background(Color(.secondarySystemGroupedBackground))
+                    .cornerRadius(14)
+                    .padding(.horizontal, 16)
                 }
-                .background(Color(.secondarySystemGroupedBackground))
-                .cornerRadius(14)
-                .padding(.horizontal, 16)
-            }
-
-            if !jugadoresFiltrados.isEmpty {
-                seccionLabel("Jugadores")
-                VStack(spacing: 0) {
-                    ForEach(jugadoresFiltrados.prefix(30)) { jugador in
-                        NavigationLink(destination: JugadorDetalleView(jugador: jugador)) {
-                            HStack(spacing: 12) {
-                                InicialCircle(nombre: jugador.nombre, color: .brand, size: 40)
-                                Text(nombreCorto(jugador.nombre))
-                                    .font(.subheadline).fontWeight(.medium)
-                                    .foregroundColor(.primary).lineLimit(1)
-                                Spacer()
-                                Image(systemName: "chevron.right").font(.caption2).foregroundColor(.secondary.opacity(0.5))
-                            }
-                            .padding(.horizontal, 16).padding(.vertical, 11)
-                        }
-                        if jugador.id != jugadoresFiltrados.prefix(30).last?.id {
-                            Divider().padding(.leading, 68)
-                        }
-                    }
-                }
-                .background(Color(.secondarySystemGroupedBackground))
-                .cornerRadius(14)
-                .padding(.horizontal, 16)
             }
         }
-        .padding(.vertical, 14)
     }
 
-    func seccionLabel(_ texto: String) -> some View {
-        Text(texto.uppercased())
-            .font(.system(size: 12, weight: .bold))
-            .foregroundColor(.secondary)
-            .kerning(0.5)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.horizontal, 16)
-            .padding(.top, 16).padding(.bottom, 8)
+    // MARK: - Acciones
+
+    func buscar() async {
+        ocultarTeclado()
+        await MainActor.run { buscando = true }
+
+        var equiposFiltrados: [Equipo]
+
+        if let comp = filtroCompeticion {
+            let ids = (try? await service.fetchEquipoIdsEnCompeticion(competicionId: comp.id)) ?? []
+            equiposFiltrados = todosEquipos.filter { ids.contains($0.id) }
+        } else {
+            equiposFiltrados = todosEquipos
+        }
+
+        if !filtroNombre.isEmpty {
+            equiposFiltrados = equiposFiltrados.filter {
+                $0.nombre.localizedCaseInsensitiveContains(filtroNombre)
+            }
+        }
+
+        await MainActor.run {
+            resultados = equiposFiltrados.sorted { $0.nombre < $1.nombre }
+            haBuscado = true
+            buscando = false
+        }
     }
 
-    // MARK: - Carga
+    func limpiar() {
+        filtroNombre = ""
+        filtroCompeticion = nil
+        resultados = []
+        haBuscado = false
+        ocultarTeclado()
+    }
+
+    func ocultarTeclado() {
+        UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+    }
 
     func cargar() async {
         do {
-            async let cs = service.fetchClubes()
-            async let js = service.fetchTodosJugadores()
-            let (clubResult, jugResult) = try await (cs, js)
+            async let e = service.fetchEquipos()
+            async let c = service.fetchCompeticiones()
+            let (equipos, comps) = try await (e, c)
             await MainActor.run {
-                self.clubes = clubResult
-                self.jugadores = jugResult
-                self.cargando = false
+                todosEquipos = equipos
+                competiciones = comps
+                cargando = false
             }
         } catch {
-            await MainActor.run { self.cargando = false }
+            await MainActor.run { cargando = false }
         }
     }
 }

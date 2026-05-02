@@ -1,22 +1,42 @@
 import SwiftUI
 
-// MARK: - Lista de clubes
+// MARK: - Vista principal con filtros
 
 struct ClubesView: View {
     @EnvironmentObject var service: SupabaseService
-    @State private var clubes: [Club] = []
+    @State private var todos: [Club] = []
     @State private var cargando = true
     @State private var errorMsg: String? = nil
-    @State private var busqueda = ""
 
-    var clubesFiltrados: [Club] {
-        guard !busqueda.isEmpty else { return clubes }
-        let q = busqueda.lowercased()
-        return clubes.filter {
-            $0.nombre.lowercased().contains(q) ||
-            ($0.localidad?.lowercased().contains(q) ?? false) ||
-            ($0.provincia?.lowercased().contains(q) ?? false)
+    // Filtros
+    @State private var filtroNombre    = ""
+    @State private var filtroCodigo    = ""
+    @State private var filtroProvincia = ""
+    @State private var filtroDelegacion = ""
+    @State private var filtroLocalidad = ""
+    @State private var filtroCP        = ""
+
+    var provincias: [String] {
+        Array(Set(todos.compactMap { $0.provincia })).sorted()
+    }
+    var delegaciones: [String] {
+        Array(Set(todos.compactMap { $0.delegacion })).sorted()
+    }
+
+    var filtrados: [Club] {
+        todos.filter { club in
+            (filtroNombre.isEmpty    || club.nombre.localizedCaseInsensitiveContains(filtroNombre)) &&
+            (filtroCodigo.isEmpty    || (club.codigo ?? "").localizedCaseInsensitiveContains(filtroCodigo)) &&
+            (filtroProvincia.isEmpty || club.provincia == filtroProvincia) &&
+            (filtroDelegacion.isEmpty || club.delegacion == filtroDelegacion) &&
+            (filtroLocalidad.isEmpty  || (club.localidad ?? "").localizedCaseInsensitiveContains(filtroLocalidad)) &&
+            (filtroCP.isEmpty         || (club.cp ?? "").hasPrefix(filtroCP))
         }
+    }
+
+    var hayFiltros: Bool {
+        !filtroNombre.isEmpty || !filtroCodigo.isEmpty || !filtroProvincia.isEmpty ||
+        !filtroDelegacion.isEmpty || !filtroLocalidad.isEmpty || !filtroCP.isEmpty
     }
 
     var body: some View {
@@ -27,52 +47,193 @@ struct ClubesView: View {
                 } else if let msg = errorMsg {
                     ErrorStateView(mensaje: msg) { Task { await cargar() } }
                 } else {
-                    lista
+                    contenido
                 }
             }
             .navigationTitle("Clubes")
-            .searchable(text: $busqueda, prompt: "Buscar club...")
             .task { await cargar() }
-            .refreshable { await cargar() }
         }
     }
 
-    var lista: some View {
+    var contenido: some View {
         ScrollView {
-            LazyVStack(spacing: 0) {
-                if clubesFiltrados.isEmpty {
-                    VStack(spacing: 12) {
-                        Image(systemName: "shield").font(.largeTitle).foregroundColor(.secondary)
-                        Text("Sin resultados").foregroundColor(.secondary).font(.subheadline)
-                    }
-                    .frame(maxWidth: .infinity)
-                    .padding(40)
-                } else {
-                    VStack(spacing: 0) {
-                        ForEach(clubesFiltrados) { club in
-                            NavigationLink(destination: ClubDetalleView(club: club)) {
-                                ClubRowView(club: club)
-                            }
-                            if club.id != clubesFiltrados.last?.id {
-                                Divider().padding(.leading, 70)
-                            }
-                        }
-                    }
-                    .background(Color(.secondarySystemGroupedBackground))
-                    .cornerRadius(14)
+            VStack(spacing: 0) {
+                filtrosCard
                     .padding(.horizontal, 16)
-                    .padding(.vertical, 14)
-                }
+                    .padding(.top, 14)
+
+                resultadosSection
+                    .padding(.top, 14)
             }
+            .padding(.bottom, 20)
         }
         .background(Color(.systemGroupedBackground))
+    }
+
+    // MARK: - Filtros
+
+    var filtrosCard: some View {
+        VStack(spacing: 0) {
+            // Nombre
+            campoTexto(label: "Nombre", placeholder: "Nombre del club", texto: $filtroNombre)
+            Divider().padding(.leading, 16)
+
+            // Código
+            campoTexto(label: "Código", placeholder: "Ej. 4266", texto: $filtroCodigo)
+                .keyboardType(.numberPad)
+            Divider().padding(.leading, 16)
+
+            // Provincia
+            campoPicker(
+                label: "Provincia",
+                valor: filtroProvincia.isEmpty ? "Todas" : filtroProvincia,
+                opciones: provincias,
+                seleccionado: $filtroProvincia
+            )
+            Divider().padding(.leading, 16)
+
+            // Delegación
+            campoPicker(
+                label: "Delegación",
+                valor: filtroDelegacion.isEmpty ? "Todas" : filtroDelegacion,
+                opciones: delegaciones,
+                seleccionado: $filtroDelegacion
+            )
+            Divider().padding(.leading, 16)
+
+            // Localidad + CP en la misma fila
+            HStack(spacing: 0) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Localidad")
+                        .font(.caption).foregroundColor(.secondary).fontWeight(.medium)
+                    TextField("Localidad", text: $filtroLocalidad)
+                        .font(.subheadline)
+                }
+                .padding(.horizontal, 16).padding(.vertical, 11)
+
+                Divider().frame(height: 36)
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("C.P.")
+                        .font(.caption).foregroundColor(.secondary).fontWeight(.medium)
+                    TextField("00000", text: $filtroCP)
+                        .font(.subheadline)
+                        .keyboardType(.numberPad)
+                        .frame(width: 70)
+                }
+                .padding(.horizontal, 16).padding(.vertical, 11)
+            }
+
+            // Footer: contador + limpiar
+            Divider()
+            HStack {
+                HStack(spacing: 6) {
+                    Text("\(filtrados.count)")
+                        .font(.subheadline).fontWeight(.bold).monospacedDigit()
+                        .foregroundColor(.brand)
+                    Text(filtrados.count == 1 ? "club encontrado" : "clubes encontrados")
+                        .font(.subheadline).foregroundColor(.secondary)
+                }
+                Spacer()
+                if hayFiltros {
+                    Button {
+                        limpiar()
+                    } label: {
+                        Label("Limpiar", systemImage: "xmark.circle.fill")
+                            .font(.subheadline).foregroundColor(.secondary)
+                    }
+                }
+            }
+            .padding(.horizontal, 16).padding(.vertical, 10)
+        }
+        .background(Color(.secondarySystemGroupedBackground))
+        .cornerRadius(14)
+    }
+
+    func campoTexto(label: String, placeholder: String, texto: Binding<String>) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(label)
+                .font(.caption).foregroundColor(.secondary).fontWeight(.medium)
+            TextField(placeholder, text: texto)
+                .font(.subheadline)
+        }
+        .padding(.horizontal, 16).padding(.vertical, 11)
+    }
+
+    func campoPicker(label: String, valor: String, opciones: [String], seleccionado: Binding<String>) -> some View {
+        HStack {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(label)
+                    .font(.caption).foregroundColor(.secondary).fontWeight(.medium)
+                Menu {
+                    Button("Todas") { seleccionado.wrappedValue = "" }
+                    Divider()
+                    ForEach(opciones, id: \.self) { opcion in
+                        Button(opcion) { seleccionado.wrappedValue = opcion }
+                    }
+                } label: {
+                    HStack(spacing: 4) {
+                        Text(valor)
+                            .font(.subheadline)
+                            .foregroundColor(seleccionado.wrappedValue.isEmpty ? .secondary : .primary)
+                        Image(systemName: "chevron.up.chevron.down")
+                            .font(.system(size: 10))
+                            .foregroundColor(.secondary)
+                    }
+                }
+            }
+            Spacer()
+        }
+        .padding(.horizontal, 16).padding(.vertical, 11)
+    }
+
+    // MARK: - Resultados
+
+    var resultadosSection: some View {
+        VStack(spacing: 0) {
+            if filtrados.isEmpty {
+                VStack(spacing: 12) {
+                    Image(systemName: "building.2")
+                        .font(.system(size: 38)).foregroundColor(.secondary.opacity(0.3))
+                    Text("Sin clubes con esos filtros")
+                        .font(.subheadline).foregroundColor(.secondary)
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.top, 60)
+            } else {
+                VStack(spacing: 0) {
+                    ForEach(filtrados) { club in
+                        NavigationLink(destination: ClubDetalleView(club: club)) {
+                            ClubRowView(club: club)
+                        }
+                        if club.id != filtrados.last?.id {
+                            Divider().padding(.leading, 70)
+                        }
+                    }
+                }
+                .background(Color(.secondarySystemGroupedBackground))
+                .cornerRadius(14)
+                .padding(.horizontal, 16)
+            }
+        }
+    }
+
+    // MARK: - Helpers
+
+    func limpiar() {
+        filtroNombre = ""
+        filtroCodigo = ""
+        filtroProvincia = ""
+        filtroDelegacion = ""
+        filtroLocalidad = ""
+        filtroCP = ""
     }
 
     func cargar() async {
         await MainActor.run { errorMsg = nil }
         do {
             let cs = try await service.fetchClubes()
-            await MainActor.run { self.clubes = cs; self.cargando = false }
+            await MainActor.run { self.todos = cs; self.cargando = false }
         } catch {
             await MainActor.run {
                 self.errorMsg = "No se pudieron cargar los clubes"

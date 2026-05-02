@@ -216,24 +216,30 @@ struct MiEquipoDashboard: View {
     // MARK: Cabecera
 
     func cabeceraView(eq: Equipo) -> some View {
-        ZStack {
-            Color.brandDark
-
+        VStack(spacing: 0) {
             VStack(spacing: 14) {
-                EscudoView(url: service.escudoUrl(equipo: eq), size: 80)
-                Text(eq.nombre)
-                    .font(.title2).fontWeight(.bold).foregroundColor(.white)
-                    .multilineTextAlignment(.center)
-                if let pos = posicion {
-                    HStack(spacing: 5) {
-                        Image(systemName: "list.number")
-                            .font(.caption2).foregroundColor(.white.opacity(0.5))
-                        Text("\(pos)º en la clasificación")
-                            .font(.caption).foregroundColor(.white.opacity(0.55))
+                EscudoView(url: service.escudoUrl(equipo: eq), size: 84)
+                VStack(spacing: 5) {
+                    Text(eq.nombre)
+                        .font(.title2).fontWeight(.bold).foregroundColor(.primary)
+                        .multilineTextAlignment(.center)
+                    if let pos = posicion {
+                        HStack(spacing: 5) {
+                            Image(systemName: "list.number")
+                                .font(.caption2).foregroundColor(.secondary)
+                            Text("\(pos)º en la clasificación")
+                                .font(.caption).foregroundColor(.secondary)
+                        }
                     }
                 }
             }
+            .frame(maxWidth: .infinity)
             .padding(.vertical, 28).padding(.horizontal, 20)
+            .background(Color(.systemBackground))
+
+            Rectangle()
+                .fill(Color(.separator))
+                .frame(height: 0.5)
         }
     }
 

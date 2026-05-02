@@ -116,18 +116,23 @@ struct EquipoDetalleView: View {
         ScrollView {
             VStack(spacing: 14) {
                 // Cabecera
-                ZStack {
-                    Color.brandDark
-                    VStack(spacing: 12) {
+                VStack(spacing: 0) {
+                    VStack(spacing: 14) {
                         EscudoView(url: service.escudoUrl(equipo: equipo), size: 80)
                         Text(equipo.nombre)
-                            .font(.title2).fontWeight(.bold).foregroundColor(.white)
+                            .font(.title2).fontWeight(.bold).foregroundColor(.primary)
                             .multilineTextAlignment(.center)
                     }
+                    .frame(maxWidth: .infinity)
                     .padding(.vertical, 26).padding(.horizontal, 20)
+                    .background(Color(.systemBackground))
+
+                    Rectangle()
+                        .fill(Color(.separator))
+                        .frame(height: 0.5)
                 }
-                .frame(maxWidth: .infinity)
                 .cornerRadius(16)
+                .clipped()
 
                 if cargando {
                     ProgressView()

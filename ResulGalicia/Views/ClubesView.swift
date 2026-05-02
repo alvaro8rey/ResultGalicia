@@ -135,21 +135,26 @@ struct ClubDetalleView: View {
     // MARK: Cabecera
 
     var cabeceraView: some View {
-        ZStack {
-            Color.brandDark
+        VStack(spacing: 0) {
             VStack(spacing: 14) {
-                EscudoView(url: club.escudoUrl, size: 84)
-                VStack(spacing: 6) {
+                EscudoView(url: club.escudoUrl, size: 90)
+                VStack(spacing: 5) {
                     Text(club.nombre)
-                        .font(.title2).fontWeight(.bold).foregroundColor(.white)
+                        .font(.title2).fontWeight(.bold).foregroundColor(.primary)
                         .multilineTextAlignment(.center)
                     if let loc = club.localidad {
                         Text([loc, club.provincia].compactMap { $0 }.joined(separator: " · "))
-                            .font(.caption).foregroundColor(.white.opacity(0.5))
+                            .font(.subheadline).foregroundColor(.secondary)
                     }
                 }
             }
+            .frame(maxWidth: .infinity)
             .padding(.vertical, 28).padding(.horizontal, 20)
+            .background(Color(.systemBackground))
+
+            Rectangle()
+                .fill(Color(.separator))
+                .frame(height: 0.5)
         }
     }
 

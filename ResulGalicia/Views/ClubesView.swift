@@ -129,11 +129,16 @@ struct ClubesView: View {
             // Footer: contador + limpiar
             Divider()
             HStack {
-                HStack(spacing: 6) {
-                    Text("\(filtrados.count)")
-                        .font(.subheadline).fontWeight(.bold).monospacedDigit()
-                        .foregroundColor(.brand)
-                    Text(filtrados.count == 1 ? "club encontrado" : "clubes encontrados")
+                if hayFiltros {
+                    HStack(spacing: 6) {
+                        Text("\(filtrados.count)")
+                            .font(.subheadline).fontWeight(.bold).monospacedDigit()
+                            .foregroundColor(.brand)
+                        Text(filtrados.count == 1 ? "club encontrado" : "clubes encontrados")
+                            .font(.subheadline).foregroundColor(.secondary)
+                    }
+                } else {
+                    Text("Usa los filtros para buscar")
                         .font(.subheadline).foregroundColor(.secondary)
                 }
                 Spacer()
@@ -193,7 +198,18 @@ struct ClubesView: View {
 
     var resultadosSection: some View {
         VStack(spacing: 0) {
-            if filtrados.isEmpty {
+            if !hayFiltros {
+                VStack(spacing: 12) {
+                    Image(systemName: "building.2")
+                        .font(.system(size: 38)).foregroundColor(.secondary.opacity(0.3))
+                    Text("Introduce algún filtro para buscar clubes")
+                        .font(.subheadline).foregroundColor(.secondary)
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal, 40)
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.top, 60)
+            } else if filtrados.isEmpty {
                 VStack(spacing: 12) {
                     Image(systemName: "building.2")
                         .font(.system(size: 38)).foregroundColor(.secondary.opacity(0.3))

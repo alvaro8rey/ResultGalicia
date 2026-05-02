@@ -135,15 +135,17 @@ struct ClubesView: View {
                     }
                 }
                 Spacer()
-                Button {
-                    buscar()
-                } label: {
-                    Label("Buscar", systemImage: "magnifyingglass")
-                        .font(.subheadline).fontWeight(.semibold)
-                        .foregroundColor(.white)
-                        .padding(.horizontal, 18).padding(.vertical, 9)
-                        .background(Color.brand)
-                        .cornerRadius(10)
+                if hayFiltros {
+                    Button {
+                        buscar()
+                    } label: {
+                        Label("Buscar", systemImage: "magnifyingglass")
+                            .font(.subheadline).fontWeight(.semibold)
+                            .foregroundColor(.white)
+                            .padding(.horizontal, 18).padding(.vertical, 9)
+                            .background(Color.brand)
+                            .cornerRadius(10)
+                    }
                 }
             }
             .padding(.horizontal, 16).padding(.vertical, 10)

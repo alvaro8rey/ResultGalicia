@@ -68,6 +68,8 @@ struct ClubesView: View {
             .padding(.bottom, 20)
         }
         .background(Color(.systemGroupedBackground))
+        .scrollDismissesKeyboard(.immediately)
+        .onTapGesture { ocultarTeclado() }
     }
 
     // MARK: - Filtros
@@ -227,6 +229,11 @@ struct ClubesView: View {
         filtroDelegacion = ""
         filtroLocalidad = ""
         filtroCP = ""
+        ocultarTeclado()
+    }
+
+    func ocultarTeclado() {
+        UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
     }
 
     func cargar() async {

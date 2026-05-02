@@ -9,29 +9,22 @@ struct ClubesView: View {
     @State private var errorMsg: String? = nil
 
     // Filtros
-    @State private var filtroNombre    = ""
-    @State private var filtroCodigo    = ""
-    @State private var filtroProvincia = ""
+    @State private var filtroNombre     = ""
+    @State private var filtroCodigo     = ""
+    @State private var filtroProvincia  = ""
     @State private var filtroDelegacion = ""
-    @State private var filtroLocalidad = ""
-    @State private var filtroCP        = ""
+    @State private var filtroLocalidad  = ""
+    @State private var filtroCP         = ""
+
+    // Resultados (solo se actualizan al pulsar Buscar)
+    @State private var resultados: [Club] = []
+    @State private var haBuscado = false
 
     var provincias: [String] {
         Array(Set(todos.compactMap { $0.provincia })).sorted()
     }
     var delegaciones: [String] {
         Array(Set(todos.compactMap { $0.delegacion })).sorted()
-    }
-
-    var filtrados: [Club] {
-        todos.filter { club in
-            (filtroNombre.isEmpty    || club.nombre.localizedCaseInsensitiveContains(filtroNombre)) &&
-            (filtroCodigo.isEmpty    || (club.codigo ?? "").localizedCaseInsensitiveContains(filtroCodigo)) &&
-            (filtroProvincia.isEmpty || club.provincia == filtroProvincia) &&
-            (filtroDelegacion.isEmpty || club.delegacion == filtroDelegacion) &&
-            (filtroLocalidad.isEmpty  || (club.localidad ?? "").localizedCaseInsensitiveContains(filtroLocalidad)) &&
-            (filtroCP.isEmpty         || (club.cp ?? "").hasPrefix(filtroCP))
-        }
     }
 
     var hayFiltros: Bool {
@@ -126,29 +119,31 @@ struct ClubesView: View {
                 .padding(.horizontal, 16).padding(.vertical, 11)
             }
 
-            // Footer: contador + limpiar
+            // Footer: limpiar + buscar
             Divider()
-            HStack {
-                if hayFiltros {
-                    HStack(spacing: 6) {
-                        Text("\(filtrados.count)")
-                            .font(.subheadline).fontWeight(.bold).monospacedDigit()
-                            .foregroundColor(.brand)
-                        Text(filtrados.count == 1 ? "club encontrado" : "clubes encontrados")
-                            .font(.subheadline).foregroundColor(.secondary)
-                    }
-                } else {
-                    Text("Usa los filtros para buscar")
-                        .font(.subheadline).foregroundColor(.secondary)
-                }
-                Spacer()
-                if hayFiltros {
+            HStack(spacing: 10) {
+                if hayFiltros || haBuscado {
                     Button {
                         limpiar()
                     } label: {
-                        Label("Limpiar", systemImage: "xmark.circle.fill")
-                            .font(.subheadline).foregroundColor(.secondary)
+                        Text("Limpiar")
+                            .font(.subheadline).fontWeight(.medium)
+                            .foregroundColor(.secondary)
+                            .padding(.horizontal, 16).padding(.vertical, 9)
+                            .background(Color(.systemGroupedBackground))
+                            .cornerRadius(10)
                     }
+                }
+                Spacer()
+                Button {
+                    buscar()
+                } label: {
+                    Label("Buscar", systemImage: "magnifyingglass")
+                        .font(.subheadline).fontWeight(.semibold)
+                        .foregroundColor(.white)
+                        .padding(.horizontal, 18).padding(.vertical, 9)
+                        .background(Color.brand)
+                        .cornerRadius(10)
                 }
             }
             .padding(.horizontal, 16).padding(.vertical, 10)
@@ -198,18 +193,16 @@ struct ClubesView: View {
 
     var resultadosSection: some View {
         VStack(spacing: 0) {
-            if !hayFiltros {
+            if !haBuscado {
                 VStack(spacing: 12) {
                     Image(systemName: "building.2")
                         .font(.system(size: 38)).foregroundColor(.secondary.opacity(0.3))
-                    Text("Introduce algún filtro para buscar clubes")
+                    Text("Usa los filtros y pulsa Buscar")
                         .font(.subheadline).foregroundColor(.secondary)
-                        .multilineTextAlignment(.center)
-                        .padding(.horizontal, 40)
                 }
                 .frame(maxWidth: .infinity)
                 .padding(.top, 60)
-            } else if filtrados.isEmpty {
+            } else if resultados.isEmpty {
                 VStack(spacing: 12) {
                     Image(systemName: "building.2")
                         .font(.system(size: 38)).foregroundColor(.secondary.opacity(0.3))
@@ -219,24 +212,44 @@ struct ClubesView: View {
                 .frame(maxWidth: .infinity)
                 .padding(.top, 60)
             } else {
-                VStack(spacing: 0) {
-                    ForEach(filtrados) { club in
-                        NavigationLink(destination: ClubDetalleView(club: club)) {
-                            ClubRowView(club: club)
-                        }
-                        if club.id != filtrados.last?.id {
-                            Divider().padding(.leading, 70)
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("\(resultados.count) \(resultados.count == 1 ? "club encontrado" : "clubes encontrados")")
+                        .font(.caption).fontWeight(.semibold)
+                        .foregroundColor(.secondary)
+                        .padding(.horizontal, 16)
+
+                    VStack(spacing: 0) {
+                        ForEach(resultados) { club in
+                            NavigationLink(destination: ClubDetalleView(club: club)) {
+                                ClubRowView(club: club)
+                            }
+                            if club.id != resultados.last?.id {
+                                Divider().padding(.leading, 70)
+                            }
                         }
                     }
+                    .background(Color(.secondarySystemGroupedBackground))
+                    .cornerRadius(14)
+                    .padding(.horizontal, 16)
                 }
-                .background(Color(.secondarySystemGroupedBackground))
-                .cornerRadius(14)
-                .padding(.horizontal, 16)
             }
         }
     }
 
     // MARK: - Helpers
+
+    func buscar() {
+        ocultarTeclado()
+        resultados = todos.filter { club in
+            (filtroNombre.isEmpty     || club.nombre.localizedCaseInsensitiveContains(filtroNombre)) &&
+            (filtroCodigo.isEmpty     || (club.codigo ?? "").localizedCaseInsensitiveContains(filtroCodigo)) &&
+            (filtroProvincia.isEmpty  || club.provincia == filtroProvincia) &&
+            (filtroDelegacion.isEmpty || club.delegacion == filtroDelegacion) &&
+            (filtroLocalidad.isEmpty  || (club.localidad ?? "").localizedCaseInsensitiveContains(filtroLocalidad)) &&
+            (filtroCP.isEmpty         || (club.cp ?? "").hasPrefix(filtroCP))
+        }
+        haBuscado = true
+    }
 
     func limpiar() {
         filtroNombre = ""
@@ -245,6 +258,8 @@ struct ClubesView: View {
         filtroDelegacion = ""
         filtroLocalidad = ""
         filtroCP = ""
+        resultados = []
+        haBuscado = false
         ocultarTeclado()
     }
 

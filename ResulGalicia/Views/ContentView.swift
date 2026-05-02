@@ -10,11 +10,19 @@ struct ContentView: View {
                 .environmentObject(service)
 
             InicioView()
-                .tabItem { Label("Buscador", systemImage: "magnifyingglass") }
+                .tabItem { Label("Ligas", systemImage: "trophy.fill") }
+                .environmentObject(service)
+
+            ClubesView()
+                .tabItem { Label("Clubes", systemImage: "building.2.fill") }
                 .environmentObject(service)
 
             EquiposView()
                 .tabItem { Label("Equipos", systemImage: "person.3.fill") }
+                .environmentObject(service)
+
+            BuscadorView()
+                .tabItem { Label("Buscador", systemImage: "magnifyingglass") }
                 .environmentObject(service)
         }
     }

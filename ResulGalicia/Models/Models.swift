@@ -18,6 +18,12 @@ struct Competicion: Codable, Identifiable {
 struct Equipo: Codable, Identifiable {
     let id: UUID
     let nombre: String
+    let clubId: UUID?
+
+    enum CodingKeys: String, CodingKey {
+        case id, nombre
+        case clubId = "club_id"
+    }
 }
 
 struct Partido: Codable, Identifiable {
@@ -123,5 +129,24 @@ struct Sustitucion: Codable, Identifiable {
         case jugadorEntraId = "jugador_entra_id"
         case equipoId = "equipo_id"
         case minuto
+    }
+}
+struct Club: Codable, Identifiable {
+    let id: UUID
+    let nombre: String
+    let codigo: String?
+    let delegacion: String?
+    let cif: String?
+    let domicilio: String?
+    let localidad: String?
+    let provincia: String?
+    let cp: String?
+    let telefono: String?
+    let email: String?
+    let escudoUrl: String?
+
+    enum CodingKeys: String, CodingKey {
+        case id, nombre, codigo, delegacion, cif, domicilio, localidad, provincia, cp, telefono, email
+        case escudoUrl = "escudo_url"
     }
 }

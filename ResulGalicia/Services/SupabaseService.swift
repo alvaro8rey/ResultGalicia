@@ -203,4 +203,33 @@ class SupabaseService: ObservableObject {
             .execute()
             .value
     }
+
+    func fetchClubes() async throws -> [Club] {
+        return try await supabase
+            .from("clubes")
+            .select()
+            .order("nombre")
+            .execute()
+            .value
+    }
+
+    func fetchClub(id: UUID) async throws -> Club {
+        return try await supabase
+            .from("clubes")
+            .select()
+            .eq("id", value: id)
+            .single()
+            .execute()
+            .value
+    }
+
+    func fetchEquiposPorClub(clubId: UUID) async throws -> [Equipo] {
+        return try await supabase
+            .from("equipos")
+            .select()
+            .eq("club_id", value: clubId)
+            .order("nombre")
+            .execute()
+            .value
+    }
 }

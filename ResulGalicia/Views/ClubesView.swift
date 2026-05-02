@@ -242,7 +242,7 @@ struct ClubDetalleView: View {
                     ForEach(equipos) { equipo in
                         NavigationLink(destination: EquipoDetalleView(equipo: equipo)) {
                             HStack(spacing: 12) {
-                                InicialCircle(nombre: equipo.nombre, color: .brand, size: 36)
+                                EscudoView(url: club.escudoUrl, size: 36)
                                 Text(equipo.nombre)
                                     .font(.subheadline).foregroundColor(.primary).lineLimit(1)
                                 Spacer()

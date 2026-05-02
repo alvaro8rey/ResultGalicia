@@ -8,7 +8,19 @@ let supabase = SupabaseClient(
 )
 
 class SupabaseService: ObservableObject {
-    
+    @Published var clubesMap: [UUID: Club] = [:]
+
+    func cargarClubesCache() async throws {
+        let cs = try await fetchClubes()
+        let map = Dictionary(uniqueKeysWithValues: cs.map { ($0.id, $0) })
+        await MainActor.run { self.clubesMap = map }
+    }
+
+    func escudoUrl(equipo: Equipo) -> String? {
+        guard let cid = equipo.clubId else { return nil }
+        return clubesMap[cid]?.escudoUrl
+    }
+
     func fetchPartidos(competicionId: UUID? = nil) async throws -> [Partido] {
         if let id = competicionId {
             return try await supabase

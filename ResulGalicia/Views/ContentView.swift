@@ -25,5 +25,6 @@ struct ContentView: View {
                 .tabItem { Label("Buscador", systemImage: "magnifyingglass") }
                 .environmentObject(service)
         }
+        .task { try? await service.cargarClubesCache() }
     }
 }

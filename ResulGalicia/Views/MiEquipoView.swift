@@ -87,7 +87,7 @@ struct SelectorEquipoSheet: View {
                     onSelect(equipo)
                 } label: {
                     HStack(spacing: 14) {
-                        InicialCircle(nombre: equipo.nombre, color: .brand, size: 40)
+                        EscudoView(url: service.escudoUrl(equipo: equipo), size: 40)
                         Text(equipo.nombre)
                             .font(.subheadline).fontWeight(.medium)
                             .foregroundColor(.primary)
@@ -220,14 +220,7 @@ struct MiEquipoDashboard: View {
             Color.brandDark
 
             VStack(spacing: 14) {
-                ZStack {
-                    RoundedRectangle(cornerRadius: 20)
-                        .fill(.white.opacity(0.08))
-                        .frame(width: 78, height: 78)
-                    Text(String(eq.nombre.prefix(2)).uppercased())
-                        .font(.system(size: 28, weight: .black))
-                        .foregroundColor(.white)
-                }
+                EscudoView(url: service.escudoUrl(equipo: eq), size: 80)
                 Text(eq.nombre)
                     .font(.title2).fontWeight(.bold).foregroundColor(.white)
                     .multilineTextAlignment(.center)

@@ -17,7 +17,7 @@ struct EquiposView: View {
                     List(equipos) { equipo in
                         NavigationLink(destination: EquipoDetalleView(equipo: equipo)) {
                             HStack(spacing: 14) {
-                                InicialCircle(nombre: equipo.nombre, color: .brand, size: 44)
+                                EscudoView(url: service.escudoUrl(equipo: equipo), size: 44)
                                 Text(equipo.nombre)
                                     .font(.subheadline)
                                     .fontWeight(.medium)
@@ -119,14 +119,7 @@ struct EquipoDetalleView: View {
                 ZStack {
                     Color.brandDark
                     VStack(spacing: 12) {
-                        ZStack {
-                            RoundedRectangle(cornerRadius: 18)
-                                .fill(.white.opacity(0.08))
-                                .frame(width: 72, height: 72)
-                            Text(String(equipo.nombre.prefix(2)).uppercased())
-                                .font(.system(size: 26, weight: .black))
-                                .foregroundColor(.white)
-                        }
+                        EscudoView(url: service.escudoUrl(equipo: equipo), size: 80)
                         Text(equipo.nombre)
                             .font(.title2).fontWeight(.bold).foregroundColor(.white)
                             .multilineTextAlignment(.center)
